@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkipKey Options</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>⏭ SkipKey Options</h1>
+      <p class="subtitle">Configure your skip hotkey</p>
+    </header>
+
+    <section class="card">
+      <h2>Hotkey</h2>
+      <div class="field">
+        <label for="hotkey-input">Skip hotkey</label>
+        <div class="hotkey-recorder" id="hotkey-recorder">
+          <input
+            type="text"
+            id="hotkey-input"
+            readonly
+            placeholder="Press a key..."
+            aria-label="Current skip hotkey. Click to change."
+          />
+          <button id="record-btn" type="button" aria-label="Record a new hotkey">
+            Change
+          </button>
+        </div>
+        <p id="conflict-warning" class="warning" hidden>
+          ⚠️ This key conflicts with a YouTube shortcut. It will still work for skipping,
+          but YouTube's shortcut won't fire while an ad is showing.
+        </p>
+      </div>
+      <div class="field">
+        <button id="reset-hotkey" type="button" class="link-btn">
+          Reset to default
+        </button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Behavior</h2>
+      <div class="field">
+        <label class="toggle">
+          <input type="checkbox" id="show-toast" />
+          <span>Show toast notification after skipping</span>
+        </label>
+      </div>
+      <div class="field">
+        <label class="toggle">
+          <input type="checkbox" id="auto-skip" />
+          <span>Auto-skip ads (click Skip automatically when it appears)</span>
+        </label>
+        <p class="hint">When enabled, the Skip button is clicked automatically without a keypress.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Stats</h2>
+      <p>Ads skipped: <strong id="skip-count">0</strong></p>
+    </section>
+
+    <footer>
+      <p>
+        <strong>SkipKey</strong> v<span id="version">0.1.0</span> ·
+        <a href="https://github.com/WinterJackson/ski" target="_blank" rel="noopener">GitHub</a> ·
+        Built by <a href="https://github.com/WinterJackson" target="_blank" rel="noopener">Winter Jackson</a>,
+        available for hire.
+      </p>
+    </footer>
+  </main>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
+
