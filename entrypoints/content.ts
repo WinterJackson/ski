@@ -6,7 +6,7 @@
  * Reads settings from storage and updates them live when they change.
  */
 
-import { findSkipButton, clickSkipButton, loadLearnedSelectors } from '../src/content/detector';
+import { findSkipButton, clickSkipButton, isAdShowing, loadLearnedSelectors } from '../src/content/detector';
 import { shouldTriggerSkip } from '../src/content/hotkey';
 import { onYouTubeNavigate, startAutoSkip, stopAutoSkip } from '../src/content/observer';
 import { showToast } from '../src/content/toast';
@@ -59,13 +59,23 @@ export default defineContentScript({
       event.stopPropagation();
       clickSkipButton(button);
 
-      // Optional toast feedback
+      // Optional toast feedback (delayed — only show when ad is actually gone)
       if (settings.showToast) {
-        try {
-          showToast();
-        } catch {
-          // Toast is non-critical UI feedback — don't let it break skip
-        }
+        const showToastWhenSkipped = () => {
+          let checks = 0;
+          const checkInterval = setInterval(() => {
+            checks++;
+            if (!isAdShowing()) {
+              clearInterval(checkInterval);
+              try { showToast(); } catch { /* non-critical */ }
+            } else if (checks > 20) {
+              // Ad still showing after 4 seconds — show toast anyway as feedback
+              clearInterval(checkInterval);
+              try { showToast('Attempting to skip...'); } catch { /* non-critical */ }
+            }
+          }, 200);
+        };
+        showToastWhenSkipped();
       }
 
       // Track skip count (fire and forget)

@@ -403,30 +403,23 @@ function learnSelector(button: HTMLElement): void {
 
 // ── Click method ────────────────────────────────────────────────────────
 
+/** Timer for the skip retry loop */
+let skipRetryTimer: ReturnType<typeof setInterval> | null = null;
+
 /**
- * Click the skip button using multiple layered strategies.
+ * Click the skip button using multiple layered strategies with retry.
  *
- * YouTube's Polymer framework may use tap gesture handlers (requiring
- * pointerdown + pointerup), event delegation on ancestor elements, or
- * internal API calls. A simple .click() can fail if YouTube's handler
- * ignores it. We use an escalating strategy:
- *
- * 1. Focus + .click() on the detected button (isTrusted: true).
- * 2. Walk up the DOM and click skip-related ancestors.
- * 3. Click ALL visible skip buttons on the page (in case we found
- *    the wrong one — YouTube sometimes has multiple skip elements).
- * 4. Dispatch to a main-world helper script that clicks from YouTube's
- *    own JavaScript context (accesses Polymer internals).
- * 5. Last resort: seek the ad video to its end (delayed, only if
- *    the ad is still showing after strategies 1-4).
+ * YouTube's Polymer framework may use tap gesture handlers, event
+ * delegation, or internal API calls that ignore a plain .click().
+ * We escalate aggressively through every viable approach and retry
+ * until the ad is actually gone.
  */
 export function clickSkipButton(button: HTMLElement): void {
-  // ── Strategy 1: Focus + native click ──
+  // ── Immediate: Focus + click the detected button ──
   try { button.focus({ preventScroll: true }); } catch { /* non-critical */ }
   button.click();
 
-  // ── Strategy 2: Walk up and click skip-related ancestors ──
-  // YouTube sometimes attaches the click handler to a parent container
+  // ── Immediate: Walk up and click skip-related ancestors ──
   let ancestor = button.parentElement;
   for (let depth = 0; depth < 5 && ancestor; depth++) {
     const cls = (ancestor.className ?? '').toString().toLowerCase();
@@ -437,8 +430,45 @@ export function clickSkipButton(button: HTMLElement): void {
     ancestor = ancestor.parentElement;
   }
 
-  // ── Strategy 3: Shotgun — click ALL visible skip buttons ──
-  // We may have detected the wrong element (YouTube can have duplicate/legacy buttons)
+  // ── Immediate: Shotgun — click ALL skip-looking elements ──
+  clickAllSkipElements(button);
+
+  // ── Immediate: Dispatch to main-world helper ──
+  try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
+
+  // ── Retry loop: escalate until ad is gone ──
+  // Keeps trying for 3 seconds with increasing aggression.
+  if (skipRetryTimer) clearInterval(skipRetryTimer);
+  let attempt = 0;
+  skipRetryTimer = setInterval(() => {
+    attempt++;
+    if (!isAdShowing() || attempt > 15) {
+      // Ad is gone or we've exhausted retries — stop
+      if (skipRetryTimer) { clearInterval(skipRetryTimer); skipRetryTimer = null; }
+      return;
+    }
+
+    // Re-try clicking (button might have reappeared or become interactive)
+    const btn = findSkipButton();
+    if (btn) {
+      btn.click();
+      clickAllSkipElements(btn);
+    }
+
+    // After 200ms (attempt 1), escalate to video seek
+    if (attempt >= 1) {
+      seekPastAd();
+    }
+
+    // Re-dispatch to main-world every 400ms
+    if (attempt % 2 === 0) {
+      try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
+    }
+  }, 200);
+}
+
+/** Click ALL visible skip buttons and text-matched buttons on the page. */
+function clickAllSkipElements(exclude: HTMLElement | null): void {
   const allSelectors = [
     ...SKIP_BUTTON_SELECTORS,
     '.ytp-ad-skip-button-container',
@@ -450,48 +480,34 @@ export function clickSkipButton(button: HTMLElement): void {
   for (const sel of allSelectors) {
     try {
       document.querySelectorAll<HTMLElement>(sel).forEach(el => {
-        if (el !== button && isVisible(el)) {
-          el.click();
-        }
+        if (el !== exclude && isVisible(el)) el.click();
       });
-    } catch { /* invalid selector in edge cases */ }
+    } catch { /* noop */ }
   }
 
-  // Also find and click buttons by text content inside the player
+  // Text-matched buttons inside the player
   const player = document.querySelector(PLAYER_SELECTOR);
   if (player) {
     player.querySelectorAll<HTMLElement>('button, [role="button"]').forEach(el => {
-      if (el !== button && isVisible(el)) {
+      if (el !== exclude && isVisible(el)) {
         const text = (el.textContent ?? '').trim();
-        if (/^skip/i.test(text)) {
-          el.click();
-        }
+        if (/^skip/i.test(text)) el.click();
       }
     });
   }
-
-  // ── Strategy 4: Dispatch to main-world helper ──
-  // The main-world script can access YouTube's internal Polymer components
-  // and click from the page's JavaScript context (not the extension's isolated world)
-  try {
-    document.dispatchEvent(new CustomEvent('__ski_skip'));
-  } catch { /* custom events not supported — extremely unlikely */ }
-
-  // ── Strategy 5: Seek video past ad (delayed last resort) ──
-  // Only fires if the ad is STILL showing after 500ms, meaning all click
-  // strategies failed. Seeking the ad video to its end causes it to complete
-  // naturally, triggering YouTube's own ad-completion → content transition.
-  setTimeout(() => {
-    if (!isAdShowing()) return; // Click strategies worked — do nothing
-    seekPastAd();
-  }, 500);
 }
 
-/** Seek all playing videos past their end to force-complete the ad. */
+/**
+ * Seek all playing videos past their end to force-complete the ad.
+ * YouTube's ad framework detects the video ending and transitions
+ * to the main content. This works from the content script because
+ * the native HTMLVideoElement.currentTime setter cannot be blocked
+ * by page JavaScript.
+ */
 function seekPastAd(): void {
   const videos = document.querySelectorAll<HTMLVideoElement>('video');
   for (const video of videos) {
-    if (!video.paused && video.duration && isFinite(video.duration)) {
+    if (video.duration && isFinite(video.duration) && video.currentTime < video.duration - 0.5) {
       video.currentTime = video.duration;
       console.debug('[Ski] Fallback: seeked ad video to end');
     }
