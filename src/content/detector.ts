@@ -404,39 +404,33 @@ function learnSelector(button: HTMLElement): void {
 // ── Click method ────────────────────────────────────────────────────────
 
 /**
- * Click the skip button.
- * Uses the full pointer event sequence to maximize compatibility.
- * YouTube sometimes checks isTrusted, but .click() and dispatchEvent
- * are the best we can do from a content script.
+ * Click the skip button using multiple strategies for maximum reliability.
+ *
+ * Strategy:
+ * 1. Focus the button, then call .click() — HTMLElement.click() produces a
+ *    trusted click event (isTrusted: true), which is what YouTube checks.
+ * 2. If the button has an ancestor with a click handler (some YouTube layouts
+ *    put the handler on the container), walk up and click that too.
+ *
+ * IMPORTANT: We deliberately do NOT dispatch synthetic pointer/mouse events.
+ * Those events have isTrusted: false and can trigger YouTube's anti-automation
+ * detection, causing it to ignore even the legitimate .click() call.
  */
 export function clickSkipButton(button: HTMLElement): void {
-  // Try direct click first
+  // Strategy 1: Focus + native .click() — produces isTrusted: true
+  try {
+    button.focus({ preventScroll: true });
+  } catch {
+    // focus() can throw in some edge cases; non-critical
+  }
   button.click();
 
-  // Also dispatch full pointer sequence for maximum compatibility
-  dispatchFullClickSequence(button);
-}
-
-/** Dispatch the full pointer/mouse event sequence */
-function dispatchFullClickSequence(button: HTMLElement): void {
-  const rect = button.getBoundingClientRect();
-  const x = rect.left + rect.width / 2;
-  const y = rect.top + rect.height / 2;
-
-  const eventInit: PointerEventInit = {
-    bubbles: true,
-    cancelable: true,
-    clientX: x,
-    clientY: y,
-    button: 0,
-    buttons: 1,
-    pointerId: 1,
-    pointerType: 'mouse',
-  };
-
-  button.dispatchEvent(new PointerEvent('pointerdown', eventInit));
-  button.dispatchEvent(new MouseEvent('mousedown', eventInit));
-  button.dispatchEvent(new PointerEvent('pointerup', eventInit));
-  button.dispatchEvent(new MouseEvent('mouseup', eventInit));
-  button.dispatchEvent(new MouseEvent('click', eventInit));
+  // Strategy 2: Also click the nearest ad-related container
+  // Some YouTube layouts attach the skip handler to a parent element
+  const container = button.closest(
+    '.ytp-ad-skip-button-container, .ytp-ad-skip-button-slot, [class*="skip"]'
+  ) as HTMLElement | null;
+  if (container && container !== button) {
+    container.click();
+  }
 }

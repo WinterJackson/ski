@@ -7,15 +7,17 @@
 const TOAST_DURATION_MS = 1500;
 
 let shadowHost: HTMLElement | null = null;
+/** Cached reference — mode:'closed' means .shadowRoot returns null */
+let shadowRootRef: ShadowRoot | null = null;
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Show a brief "Ad skipped" toast on the page */
 export function showToast(message = 'Ad skipped ⏭'): void {
   // Create the shadow host on first use
-  if (!shadowHost) {
+  if (!shadowHost || !shadowHost.isConnected) {
     shadowHost = document.createElement('div');
     shadowHost.id = 'ski-toast-host';
-    const shadow = shadowHost.attachShadow({ mode: 'closed' });
+    shadowRootRef = shadowHost.attachShadow({ mode: 'closed' });
 
     const style = document.createElement('style');
     style.textContent = `
@@ -54,13 +56,13 @@ export function showToast(message = 'Ad skipped ⏭'): void {
     toast.setAttribute('role', 'status');
     toast.setAttribute('aria-live', 'polite');
 
-    shadow.appendChild(style);
-    shadow.appendChild(toast);
+    shadowRootRef.appendChild(style);
+    shadowRootRef.appendChild(toast);
     document.body.appendChild(shadowHost);
   }
 
-  const shadow = shadowHost.shadowRoot ?? shadowHost.attachShadow({ mode: 'closed' });
-  const toast = shadow.querySelector('.toast') as HTMLElement;
+  if (!shadowRootRef) return;
+  const toast = shadowRootRef.querySelector('.toast') as HTMLElement;
   if (!toast) return;
 
   // Clear any pending hide
@@ -91,6 +93,6 @@ export function destroyToast(): void {
   if (shadowHost && shadowHost.parentNode) {
     shadowHost.parentNode.removeChild(shadowHost);
     shadowHost = null;
+    shadowRootRef = null;
   }
 }
-
