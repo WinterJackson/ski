@@ -1,0 +1,65 @@
+name: 🐛 Hotkey Stopped Working
+description: The skip hotkey no longer works on YouTube
+labels: ["bug", "selector-breakage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! YouTube changes its page frequently, and this helps us fix it quickly.
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: "Chrome 120.0.6099.71"
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: SkipKey version
+      placeholder: "0.1.0 (shown in the options page footer)"
+    validations:
+      required: true
+
+  - type: input
+    id: locale
+    attributes:
+      label: YouTube language/locale
+      placeholder: "English (US)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: skip-button-visible
+    attributes:
+      label: Was the Skip button visible on screen?
+      options:
+        - "Yes — I could see the Skip button but the hotkey didn't click it"
+        - "No — there was no Skip button (unskippable ad)"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. Go to YouTube and play a video with an ad
+        2. Wait for the Skip button to appear
+        3. Press the configured hotkey
+        4. Expected: ad skips. Actual: nothing happens.
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output (optional)
+      description: Open DevTools (F12) → Console and look for lines starting with [SkipKey]
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?

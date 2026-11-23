@@ -12,5 +12,14 @@ export default defineConfig({
       '*://www.youtube.com/*',
       '*://www.youtube-nocookie.com/*',
     ],
+    browser_specific_settings: {
+      gecko: {
+        id: 'skipkey@winterjackson.dev',
+        strict_min_version: '109.0',
+      },
+    },
+  },
+  suppressWarnings: {
+    firefoxDataCollection: true,
   },
 });
