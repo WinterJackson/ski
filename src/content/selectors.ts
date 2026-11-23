@@ -10,29 +10,44 @@
 
 /** CSS selectors for the Skip Ad button, ordered by specificity/recency */
 export const SKIP_BUTTON_SELECTORS: readonly string[] = [
-  // Modern YouTube (2024+)
-  'button.ytp-skip-ad-button',
-  '.ytp-skip-ad-button',
+  // Modern YouTube (2024–2026) — the new skip button with icon+text
   'button.ytp-ad-skip-button-modern',
   '.ytp-ad-skip-button-modern',
-  // Older variants
+  // Modern variant with ytp-button base class
+  '.ytp-ad-skip-button-slot button.ytp-button',
+  '.ytp-ad-skip-button-slot button',
+  // Legacy selectors (still seen as fallbacks)
+  'button.ytp-skip-ad-button',
+  '.ytp-skip-ad-button',
   'button.ytp-ad-skip-button',
   '.ytp-ad-skip-button',
-  '.ytp-ad-skip-button-slot button',
-  // Fallback: any button inside the skip container
+  // Container-based fallbacks
   '.ytp-ad-skip-button-container button',
+  // Attribute-based selector (works even if classes are obfuscated)
+  'button[aria-label^="Skip"]',
+  'button[aria-label^="skip"]',
 ];
 
 // ----- Player state selectors -----
 
 /** Selector for the video player container */
-export const PLAYER_SELECTOR = '.html5-video-player';
+export const PLAYER_SELECTOR = '#movie_player, .html5-video-player';
 
 /** Class that YouTube adds to the player when an ad is showing */
 export const AD_SHOWING_CLASS = 'ad-showing';
 
 /** Full selector for a player currently showing an ad */
 export const AD_SHOWING_SELECTOR = `.${AD_SHOWING_CLASS}`;
+
+// ----- Ad overlay selectors (for heuristic scoring) -----
+
+/** Selectors for ad-related containers to help discovery */
+export const AD_CONTAINER_SELECTORS: readonly string[] = [
+  '.ytp-ad-module',
+  '.video-ads',
+  '.ytp-ad-player-overlay',
+  '.ytp-ad-overlay-container',
+];
 
 // ----- Localized "Skip" strings -----
 
@@ -45,6 +60,8 @@ export const SKIP_STRINGS: readonly string[] = [
   'Skip',         // English
   'Skip Ad',      // English (variant)
   'Skip Ads',     // English (plural)
+  'Skip ad',      // English (lowercase)
+  'Skip ads',     // English (lowercase plural)
   'Überspringen', // German
   'Passer',       // French
   'Saltar',       // Spanish
@@ -58,6 +75,10 @@ export const SKIP_STRINGS: readonly string[] = [
   '跳過',          // Chinese (Traditional)
   'تخطي',         // Arabic
   'छोड़ें',         // Hindi
+  'Ignorer',      // French (variant)
+  'Hoppa över',   // Swedish
+  'Overslaan',    // Dutch
+  'Ohita',        // Finnish
 ];
 
 // ----- aria-label patterns -----
@@ -66,5 +87,5 @@ export const SKIP_STRINGS: readonly string[] = [
 export const SKIP_ARIA_PATTERNS: readonly RegExp[] = [
   /^skip/i,
   /^skip\s+ad/i,
+  /^skip\s+ads/i,
 ];
-

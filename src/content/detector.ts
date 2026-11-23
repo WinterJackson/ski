@@ -66,7 +66,14 @@ async function saveLearnedSelector(selector: string): Promise<void> {
 /** Check if the player is currently showing an ad */
 export function isAdShowing(): boolean {
   const player = document.querySelector(PLAYER_SELECTOR);
-  return player !== null && player.classList.contains(AD_SHOWING_CLASS);
+  if (!player) return false;
+
+  // Check the player itself or any ancestor/descendant
+  if (player.classList.contains(AD_SHOWING_CLASS)) return true;
+
+  // Some YouTube layouts nest the ad-showing class differently
+  const adPlayer = document.querySelector('.html5-video-player.ad-showing, #movie_player.ad-showing');
+  return adPlayer !== null;
 }
 
 /**
@@ -81,7 +88,9 @@ export function isAdShowing(): boolean {
  */
 export function findSkipButton(): HTMLElement | null {
   // Gate: only search during ads
-  if (!isAdShowing()) return null;
+  if (!isAdShowing()) {
+    return null;
+  }
 
   // Layer 1: Learned selectors (from previous discovery)
   for (const selector of learnedSelectors) {
@@ -97,9 +106,11 @@ export function findSkipButton(): HTMLElement | null {
 
   // Layer 2: Known CSS selectors
   for (const selector of SKIP_BUTTON_SELECTORS) {
-    const button = document.querySelector<HTMLElement>(selector);
-    if (button && isVisible(button) && isClickable(button)) {
-      return button;
+    const els = document.querySelectorAll<HTMLElement>(selector);
+    for (const button of els) {
+      if (isVisible(button) && isClickable(button)) {
+        return button;
+      }
     }
   }
 
@@ -134,36 +145,31 @@ export function findSkipButton(): HTMLElement | null {
  * countdown), so we must verify actual visibility.
  */
 export function isVisible(el: HTMLElement): boolean {
-  // Check computed styles first (works in both real browser and jsdom)
-  const style = getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-    return false;
-  }
-
-  // Check inline style (catches `style="display: none"` even in jsdom)
+  // Check inline style first (fastest check for display:none)
   const inlineDisplay = el.style.display;
   if (inlineDisplay === 'none') return false;
   const inlineVisibility = el.style.visibility;
   if (inlineVisibility === 'hidden') return false;
 
-  // In a real browser, check bounding box
+  // Check computed styles
+  const style = getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+    return false;
+  }
+
+  // Check bounding box — zero-size elements are effectively invisible
   const rect = el.getBoundingClientRect();
-  // If rect has real dimensions, trust it. If rect is all zeros (jsdom),
-  // fall through to assume visible (we already checked styles).
-  if (rect.width > 0 || rect.height > 0) {
+  if (rect.width > 0 && rect.height > 0) {
     return true;
   }
 
-  // getBoundingClientRect returns all zeros in jsdom, so check if the element
-  // has style="display: block" or similar explicit visibility.
-  // If we got here and inline display is explicitly set to something visible, trust it.
+  // If inline display is explicitly set to something visible, trust it
   if (inlineDisplay && inlineDisplay !== 'none') return true;
 
-  // offsetParent check (null for hidden elements, but also null in jsdom for all)
+  // offsetParent check
   if (el.offsetParent !== null) return true;
 
-  // Default: element passed style checks, assume visible.
-  // In a real browser, this rarely reaches here.
+  // Default: element passed style checks, assume visible
   return true;
 }
 
@@ -240,7 +246,7 @@ const HEURISTIC_SIGNALS: HeuristicSignal[] = [
     weight: 0.25,
     score: (el) => {
       const check = (e: Element): boolean => {
-        const cls = (e.className ?? '').toLowerCase();
+        const cls = (e.className ?? '').toString().toLowerCase();
         return cls.includes('skip') || cls.includes('ad');
       };
       if (check(el)) return 1;
@@ -267,9 +273,10 @@ const HEURISTIC_SIGNALS: HeuristicSignal[] = [
       let parent = el.parentElement;
       let depth = 0;
       while (parent && depth < 8) {
-        const cls = (parent.className ?? '').toLowerCase();
+        const cls = (parent.className ?? '').toString().toLowerCase();
         if (cls.includes('ad-module') || cls.includes('ad-overlay') ||
-            cls.includes('ad-player') || cls.includes('ad-skip')) {
+            cls.includes('ad-player') || cls.includes('ad-skip') ||
+            cls.includes('video-ads')) {
           return 1;
         }
         if (cls.includes('ad')) return 0.7;
@@ -356,7 +363,6 @@ export function discoverSkipButton(): HTMLElement | null {
  * persist it so we try it first next time.
  */
 function learnSelector(button: HTMLElement): void {
-  // Try to build a useful selector from the element
   const selectors: string[] = [];
 
   // If it has an id
@@ -390,7 +396,6 @@ function learnSelector(button: HTMLElement): void {
 
   // Save each discovered selector
   for (const sel of selectors) {
-    // Don't learn selectors we already know
     if (SKIP_BUTTON_SELECTORS.includes(sel)) continue;
     saveLearnedSelector(sel);
   }
@@ -400,23 +405,19 @@ function learnSelector(button: HTMLElement): void {
 
 /**
  * Click the skip button.
- * Starts with .click(). If YouTube ever ignores untrusted events,
- * the fallback dispatches the full pointer sequence.
+ * Uses the full pointer event sequence to maximize compatibility.
+ * YouTube sometimes checks isTrusted, but .click() and dispatchEvent
+ * are the best we can do from a content script.
  */
 export function clickSkipButton(button: HTMLElement): void {
-  // Try the simple way first
+  // Try direct click first
   button.click();
 
-  // If the button is still visible after clicking, it might have been ignored.
-  // Schedule a fallback attempt with the full event sequence.
-  requestAnimationFrame(() => {
-    if (isVisible(button) && isClickable(button)) {
-      dispatchFullClickSequence(button);
-    }
-  });
+  // Also dispatch full pointer sequence for maximum compatibility
+  dispatchFullClickSequence(button);
 }
 
-/** Dispatch the full pointer/mouse event sequence (fallback) */
+/** Dispatch the full pointer/mouse event sequence */
 function dispatchFullClickSequence(button: HTMLElement): void {
   const rect = button.getBoundingClientRect();
   const x = rect.left + rect.width / 2;
