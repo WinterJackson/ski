@@ -404,33 +404,96 @@ function learnSelector(button: HTMLElement): void {
 // ── Click method ────────────────────────────────────────────────────────
 
 /**
- * Click the skip button using multiple strategies for maximum reliability.
+ * Click the skip button using multiple layered strategies.
  *
- * Strategy:
- * 1. Focus the button, then call .click() — HTMLElement.click() produces a
- *    trusted click event (isTrusted: true), which is what YouTube checks.
- * 2. If the button has an ancestor with a click handler (some YouTube layouts
- *    put the handler on the container), walk up and click that too.
+ * YouTube's Polymer framework may use tap gesture handlers (requiring
+ * pointerdown + pointerup), event delegation on ancestor elements, or
+ * internal API calls. A simple .click() can fail if YouTube's handler
+ * ignores it. We use an escalating strategy:
  *
- * IMPORTANT: We deliberately do NOT dispatch synthetic pointer/mouse events.
- * Those events have isTrusted: false and can trigger YouTube's anti-automation
- * detection, causing it to ignore even the legitimate .click() call.
+ * 1. Focus + .click() on the detected button (isTrusted: true).
+ * 2. Walk up the DOM and click skip-related ancestors.
+ * 3. Click ALL visible skip buttons on the page (in case we found
+ *    the wrong one — YouTube sometimes has multiple skip elements).
+ * 4. Dispatch to a main-world helper script that clicks from YouTube's
+ *    own JavaScript context (accesses Polymer internals).
+ * 5. Last resort: seek the ad video to its end (delayed, only if
+ *    the ad is still showing after strategies 1-4).
  */
 export function clickSkipButton(button: HTMLElement): void {
-  // Strategy 1: Focus + native .click() — produces isTrusted: true
-  try {
-    button.focus({ preventScroll: true });
-  } catch {
-    // focus() can throw in some edge cases; non-critical
-  }
+  // ── Strategy 1: Focus + native click ──
+  try { button.focus({ preventScroll: true }); } catch { /* non-critical */ }
   button.click();
 
-  // Strategy 2: Also click the nearest ad-related container
-  // Some YouTube layouts attach the skip handler to a parent element
-  const container = button.closest(
-    '.ytp-ad-skip-button-container, .ytp-ad-skip-button-slot, [class*="skip"]'
-  ) as HTMLElement | null;
-  if (container && container !== button) {
-    container.click();
+  // ── Strategy 2: Walk up and click skip-related ancestors ──
+  // YouTube sometimes attaches the click handler to a parent container
+  let ancestor = button.parentElement;
+  for (let depth = 0; depth < 5 && ancestor; depth++) {
+    const cls = (ancestor.className ?? '').toString().toLowerCase();
+    if (cls.includes('skip') || cls.includes('ad-skip') ||
+        cls.includes('ad-button-container') || cls.includes('ad-button-slot')) {
+      ancestor.click();
+    }
+    ancestor = ancestor.parentElement;
+  }
+
+  // ── Strategy 3: Shotgun — click ALL visible skip buttons ──
+  // We may have detected the wrong element (YouTube can have duplicate/legacy buttons)
+  const allSelectors = [
+    ...SKIP_BUTTON_SELECTORS,
+    '.ytp-ad-skip-button-container',
+    '.ytp-ad-skip-button-container button',
+    '.ytp-ad-skip-button-slot',
+    '.ytp-ad-skip-button-slot button',
+    '[class*="skip-ad"][class*="button"]',
+  ];
+  for (const sel of allSelectors) {
+    try {
+      document.querySelectorAll<HTMLElement>(sel).forEach(el => {
+        if (el !== button && isVisible(el)) {
+          el.click();
+        }
+      });
+    } catch { /* invalid selector in edge cases */ }
+  }
+
+  // Also find and click buttons by text content inside the player
+  const player = document.querySelector(PLAYER_SELECTOR);
+  if (player) {
+    player.querySelectorAll<HTMLElement>('button, [role="button"]').forEach(el => {
+      if (el !== button && isVisible(el)) {
+        const text = (el.textContent ?? '').trim();
+        if (/^skip/i.test(text)) {
+          el.click();
+        }
+      }
+    });
+  }
+
+  // ── Strategy 4: Dispatch to main-world helper ──
+  // The main-world script can access YouTube's internal Polymer components
+  // and click from the page's JavaScript context (not the extension's isolated world)
+  try {
+    document.dispatchEvent(new CustomEvent('__ski_skip'));
+  } catch { /* custom events not supported — extremely unlikely */ }
+
+  // ── Strategy 5: Seek video past ad (delayed last resort) ──
+  // Only fires if the ad is STILL showing after 500ms, meaning all click
+  // strategies failed. Seeking the ad video to its end causes it to complete
+  // naturally, triggering YouTube's own ad-completion → content transition.
+  setTimeout(() => {
+    if (!isAdShowing()) return; // Click strategies worked — do nothing
+    seekPastAd();
+  }, 500);
+}
+
+/** Seek all playing videos past their end to force-complete the ad. */
+function seekPastAd(): void {
+  const videos = document.querySelectorAll<HTMLVideoElement>('video');
+  for (const video of videos) {
+    if (!video.paused && video.duration && isFinite(video.duration)) {
+      video.currentTime = video.duration;
+      console.debug('[Ski] Fallback: seeked ad video to end');
+    }
   }
 }

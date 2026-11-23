@@ -151,8 +151,17 @@ describe('detector with fixtures', () => {
         containerClickCount++;
       });
       clickSkipButton(button);
-      // Container receives clicks: bubbled from button.click() + direct container.click()
+      // Container receives clicks: bubbled from button + ancestor walk + shotgun
       expect(containerClickCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it('dispatches __ski_skip custom event for main-world helper', () => {
+      loadFixture(FIXTURE_SKIPPABLE_AD);
+      const button = findSkipButton()!;
+      let eventFired = false;
+      document.addEventListener('__ski_skip', () => { eventFired = true; }, { once: true });
+      clickSkipButton(button);
+      expect(eventFired).toBe(true);
     });
 
     it('does not throw when button has no matching container', () => {

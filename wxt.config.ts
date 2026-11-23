@@ -12,6 +12,12 @@ export default defineConfig({
       '*://www.youtube.com/*',
       '*://www.youtube-nocookie.com/*',
     ],
+    web_accessible_resources: [
+      {
+        resources: ['ski-main.js'],
+        matches: ['*://www.youtube.com/*', '*://www.youtube-nocookie.com/*'],
+      },
+    ],
     browser_specific_settings: {
       gecko: {
         id: 'ski-extension@winterjackson.dev',

@@ -28,6 +28,18 @@ export default defineContentScript({
   async main() {
     console.debug('[Ski] Content script loaded');
 
+    // ── Inject main-world helper script ──
+    // Runs in YouTube's JavaScript context to access internal APIs.
+    // The content script communicates with it via CustomEvent.
+    try {
+      const script = document.createElement('script');
+      script.src = browser.runtime.getURL('/ski-main.js' as '/options.html');
+      (document.head ?? document.documentElement).appendChild(script);
+      script.remove();
+    } catch {
+      // Non-critical — other skip strategies still work
+    }
+
     // Load initial settings and learned selectors in parallel
     const [settings_loaded] = await Promise.all([
       loadSettings(),
