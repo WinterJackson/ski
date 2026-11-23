@@ -1,12 +1,12 @@
-# Privacy Policy — SkipKey
+# Privacy Policy — Ski Extension
 
 **Last updated:** 2026-11-23
 
 ## Summary
 
-SkipKey does **not** collect, store, transmit, or sell any personal data.
+Ski Extension does **not** collect, store, transmit, or sell any personal data.
 
-## What SkipKey stores
+## What Ski Extension stores
 
 | Data | Where | Purpose |
 |------|-------|---------|
@@ -14,7 +14,7 @@ SkipKey does **not** collect, store, transmit, or sell any personal data.
 | Toast and auto-skip preferences | `chrome.storage.sync` | Your configuration choices |
 | Skip counter | `chrome.storage.local` | Shows how many ads you've skipped (never transmitted) |
 
-## What SkipKey does NOT do
+## What Ski Extension does NOT do
 
 - ❌ No analytics or telemetry
 - ❌ No network requests of any kind

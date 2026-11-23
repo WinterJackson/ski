@@ -13,7 +13,7 @@ import { showToast } from '../src/content/toast';
 import {
   loadSettings,
   incrementSkipCount,
-  type SkipKeySettings,
+  type SkiSettings,
   DEFAULT_SETTINGS,
 } from '../src/shared/settings';
 
@@ -31,7 +31,7 @@ export default defineContentScript({
       loadSettings(),
       loadLearnedSelectors(),
     ]);
-    let settings: SkipKeySettings = settings_loaded;
+    let settings: SkiSettings = settings_loaded;
 
     // --- Keydown handler (capture phase) ---
     function onKeyDown(event: KeyboardEvent): void {
@@ -54,7 +54,7 @@ export default defineContentScript({
       incrementSkipCount();
 
       // Throttled diagnostic: log if the skip worked
-      console.debug('[SkipKey] Ad skipped');
+      console.debug('[Ski] Ad skipped');
     }
 
     document.addEventListener('keydown', onKeyDown, { capture: true });
@@ -80,7 +80,7 @@ export default defineContentScript({
     browser.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'sync') return;
 
-      const updated: Partial<SkipKeySettings> = {};
+      const updated: Partial<SkiSettings> = {};
       for (const [key, change] of Object.entries(changes)) {
         if (key in DEFAULT_SETTINGS) {
           (updated as Record<string, unknown>)[key] = change.newValue;

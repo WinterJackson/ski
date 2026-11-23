@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/icon/128.png" alt="SkipKey Logo" width="96" height="96" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);" />
+  <img src="public/icon/128.png" alt="Ski Extension Logo" width="96" height="96" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);" />
 </p>
 
-<h1 align="center">SkipKey (ski)</h1>
+<h1 align="center">Ski Extension</h1>
 
 <p align="center">
   <strong>Fast, private, keyboard-only browser extension that clicks YouTube's own Skip Ad button the millisecond it appears.</strong>
@@ -29,11 +29,11 @@
 
 ---
 
-## ⚡ Why SkipKey?
+## ⚡ Why Ski Extension?
 
 Most tools that deal with ads use invasive tactics: injecting network filters, muting players, fast-forwarding video tracks to 16x, or running heavy background processes. These tricks routinely break, trigger anti-adblock countermeasures, and compromise browser performance.
 
-**SkipKey takes an honest, lightweight approach:**
+**Ski Extension takes an honest, lightweight approach:**
 1. It listens for your hotkey in the capture phase.
 2. It detects YouTube's official **Skip Ad** button inside the video player.
 3. It dispatches a trusted click event directly to the button.
@@ -48,7 +48,7 @@ Most tools that deal with ads use invasive tactics: injecting network filters, m
 
 - ⌨️ **Single Hotkey Skip**: Tap your configured key (default: `.`) to instantly trigger YouTube's Skip button without moving the mouse.
 - 🛡️ **Typing-Context Guard**: Smart inspection ignores keypresses while you're typing in YouTube comments, search bars, textareas, inputs, or `contenteditable` tags.
-- 🧠 **Adaptive Self-Healing Engine**: Uses a 4-layer fallback pipeline with weighted heuristic scoring. If YouTube obfuscates or renames class names, SkipKey identifies the button by position, DOM context, and metadata, then **learns and caches** the new selector automatically.
+- 🧠 **Adaptive Self-Healing Engine**: Uses a 4-layer fallback pipeline with weighted heuristic scoring. If YouTube obfuscates or renames class names, Ski Extension identifies the button by position, DOM context, and metadata, then **learns and caches** the new selector automatically.
 - 🌐 **Multi-Language Detection**: Pre-configured with localized "Skip" variants across 16+ languages (English, German, French, Spanish, Japanese, Chinese, Arabic, Hindi, etc.).
 - 🔄 **SPA Navigation Resilient**: Hooks into `yt-navigate-finish` to keep hotkey listeners and observers intact during long uninterrupted viewing sessions.
 - 🎛️ **Modern Options Hub**: Dark-themed options panel equipped with an interactive live hotkey recorder, modifier key combinations (Ctrl/Alt/Shift/Cmd), and YouTube shortcut conflict warnings.
@@ -59,7 +59,7 @@ Most tools that deal with ads use invasive tactics: injecting network filters, m
 
 ## 🧠 How Self-Healing Works
 
-YouTube regularly rolls out A/B tests and updates that rename player classes (`.ytp-skip-ad-button` ➔ `.ytp-ad-skip-button-modern` ➔ dynamic hash classes). SkipKey prevents breakage through an intelligent, multi-stage detection engine:
+YouTube regularly rolls out A/B tests and updates that rename player classes (`.ytp-skip-ad-button` ➔ `.ytp-ad-skip-button-modern` ➔ dynamic hash classes). Ski Extension prevents breakage through an intelligent, multi-stage detection engine:
 
 ```mermaid
 flowchart TD
@@ -129,7 +129,7 @@ When known classes fail, the engine inspects all candidate buttons in the player
 3. The ad skips immediately.
 
 ### Customizing Your Hotkey
-- Right-click the SkipKey icon in your browser toolbar and choose **Options** (or open the extensions page).
+- Right-click the Ski Extension icon in your browser toolbar and choose **Options** (or open the extensions page).
 - Click **Change** in the Hotkey recorder and press your desired key or combination (e.g., `Shift + S`, `X`, `Ctrl + .`).
 - The recorder will alert you if your chosen key clashes with YouTube default shortcuts (like `K` for pause, `J`/`L` for seek, or `F` for fullscreen).
 
@@ -168,7 +168,7 @@ ski/
 
 ## 🔒 Security & Privacy
 
-SkipKey follows strict privacy-first guidelines:
+Ski Extension follows strict privacy-first guidelines:
 
 - **No Remote Code**: Complies with Chrome MV3 security policies. All logic ships within the verified build package.
 - **Minimal Permissions**: Demands only `storage` for user settings and host permissions for `*://www.youtube.com/*` & `*://www.youtube-nocookie.com/*`.

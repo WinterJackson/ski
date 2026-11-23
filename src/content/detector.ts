@@ -55,7 +55,7 @@ async function saveLearnedSelector(selector: string): Promise<void> {
 
   try {
     await browser.storage.local.set({ [LEARNED_SELECTORS_KEY]: learnedSelectors });
-    console.debug('[SkipKey] Learned new selector:', selector);
+    console.debug('[Ski] Learned new selector:', selector);
   } catch {
     // Non-critical — works this session even if storage fails
   }
@@ -331,7 +331,7 @@ export function discoverSkipButton(): HTMLElement | null {
 
   if (bestButton && bestScore >= DISCOVERY_THRESHOLD) {
     console.debug(
-      `[SkipKey] Heuristic discovery found skip button (score: ${bestScore.toFixed(2)})`,
+      `[Ski] Heuristic discovery found skip button (score: ${bestScore.toFixed(2)})`,
       bestButton
     );
     return bestButton;
@@ -340,7 +340,7 @@ export function discoverSkipButton(): HTMLElement | null {
   // Throttled diagnostic warning
   if (isAdShowing() && buttons.length > 0) {
     console.debug(
-      `[SkipKey] No skip button found during ad. ` +
+      `[Ski] No skip button found during ad. ` +
       `Best candidate scored ${bestScore.toFixed(2)} (threshold: ${DISCOVERY_THRESHOLD}). ` +
       `The ad may be unskippable, or YouTube changed its structure significantly.`
     );

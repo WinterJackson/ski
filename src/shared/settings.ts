@@ -3,7 +3,8 @@
  * Settings are stored in chrome.storage.sync so they follow the user across devices.
  */
 
-export interface SkipKeySettings {
+export interface SkiSettings {
+  [key: string]: unknown;
   /** The key code (event.code) that triggers the skip */
   keyCode: string;
   /** Whether Ctrl must be held */
@@ -27,7 +28,7 @@ export interface SkipKeySettings {
 }
 
 /** Default settings — the key is Period (.) which is not used by YouTube */
-export const DEFAULT_SETTINGS: SkipKeySettings = {
+export const DEFAULT_SETTINGS: SkiSettings = {
   keyCode: 'Period',
   ctrlKey: false,
   altKey: false,
@@ -68,14 +69,14 @@ export const YOUTUBE_SHORTCUTS: ReadonlySet<string> = new Set([
  * Check if a key combo conflicts with YouTube shortcuts.
  * Only bare keys (no modifiers) conflict with YouTube.
  */
-export function hasYouTubeConflict(settings: SkipKeySettings): boolean {
+export function hasYouTubeConflict(settings: SkiSettings): boolean {
   const hasModifier = settings.ctrlKey || settings.altKey || settings.shiftKey || settings.metaKey;
   if (hasModifier) return false;
   return YOUTUBE_SHORTCUTS.has(settings.keyCode);
 }
 
 /** Validate that settings have sane values */
-export function validateSettings(settings: Partial<SkipKeySettings>): SkipKeySettings {
+export function validateSettings(settings: Partial<SkiSettings>): SkiSettings {
   return {
     keyCode: typeof settings.keyCode === 'string' && settings.keyCode.length > 0
       ? settings.keyCode
@@ -99,17 +100,17 @@ export function validateSettings(settings: Partial<SkipKeySettings>): SkipKeySet
 }
 
 /** Load settings from storage, with defaults for missing values */
-export async function loadSettings(): Promise<SkipKeySettings> {
+export async function loadSettings(): Promise<SkiSettings> {
   try {
     const stored = await browser.storage.sync.get(DEFAULT_SETTINGS);
-    return validateSettings(stored as Partial<SkipKeySettings>);
+    return validateSettings(stored as Partial<SkiSettings>);
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
 }
 
 /** Save settings to storage */
-export async function saveSettings(settings: Partial<SkipKeySettings>): Promise<void> {
+export async function saveSettings(settings: Partial<SkiSettings>): Promise<void> {
   await browser.storage.sync.set(settings);
 }
 

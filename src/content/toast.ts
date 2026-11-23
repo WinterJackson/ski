@@ -14,7 +14,7 @@ export function showToast(message = 'Ad skipped ⏭'): void {
   // Create the shadow host on first use
   if (!shadowHost) {
     shadowHost = document.createElement('div');
-    shadowHost.id = 'skipkey-toast-host';
+    shadowHost.id = 'ski-toast-host';
     const shadow = shadowHost.attachShadow({ mode: 'closed' });
 
     const style = document.createElement('style');

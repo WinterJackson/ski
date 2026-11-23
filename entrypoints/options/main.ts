@@ -9,7 +9,7 @@ import {
   saveSettings,
   hasYouTubeConflict,
   DEFAULT_SETTINGS,
-  type SkipKeySettings,
+  type SkiSettings,
 } from '../../src/shared/settings';
 
 // ----- DOM references -----
@@ -23,7 +23,7 @@ const skipCountEl = document.getElementById('skip-count') as HTMLElement;
 const versionEl = document.getElementById('version') as HTMLElement;
 
 let isRecording = false;
-let currentSettings: SkipKeySettings;
+let currentSettings: SkiSettings;
 
 // ----- Initialize -----
 async function init(): Promise<void> {

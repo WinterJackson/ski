@@ -7,7 +7,7 @@
  * - Ignores event.repeat to prevent double clicks.
  */
 
-import type { SkipKeySettings } from '../shared/settings';
+import type { SkiSettings } from '../shared/settings';
 
 /** Elements where keystrokes should be treated as typing, not shortcuts */
 const TYPING_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
@@ -36,7 +36,7 @@ export function isTypingContext(event: KeyboardEvent): boolean {
 /**
  * Check if a keyboard event matches the configured hotkey.
  */
-export function matchesHotkey(event: KeyboardEvent, settings: SkipKeySettings): boolean {
+export function matchesHotkey(event: KeyboardEvent, settings: SkiSettings): boolean {
   return (
     event.code === settings.keyCode &&
     event.ctrlKey === settings.ctrlKey &&
@@ -53,7 +53,7 @@ export function matchesHotkey(event: KeyboardEvent, settings: SkipKeySettings): 
  * - It's not a repeat event
  * - The user is not typing
  */
-export function shouldTriggerSkip(event: KeyboardEvent, settings: SkipKeySettings): boolean {
+export function shouldTriggerSkip(event: KeyboardEvent, settings: SkiSettings): boolean {
   // Don't trigger on held keys
   if (event.repeat) return false;
 

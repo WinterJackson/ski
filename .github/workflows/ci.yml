@@ -61,11 +61,12 @@ jobs:
       - name: Upload Chrome zip
         uses: actions/upload-artifact@v4
         with:
-          name: skipkey-chrome-mv3
+          name: ski-extension-chrome-mv3
           path: .output/*.zip
 
       - name: Upload Firefox zip
         uses: actions/upload-artifact@v4
         with:
-          name: skipkey-firefox-mv2
+          name: ski-extension-firefox-mv2
           path: .output/*.zip
+

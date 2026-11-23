@@ -2,7 +2,7 @@
   "name": "ski",
   "version": "0.1.0",
   "private": true,
-  "description": "SkipKey — Skip YouTube ads with a keypress. Free, open-source browser extension.",
+  "description": "Ski Extension — Skip YouTube ads with a keypress. Free, open-source browser extension.",
   "author": "Winter Jackson",
   "license": "MIT",
   "type": "module",

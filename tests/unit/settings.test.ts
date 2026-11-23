@@ -6,7 +6,7 @@ import {
   validateSettings,
   hasYouTubeConflict,
   DEFAULT_SETTINGS,
-  type SkipKeySettings,
+  type SkiSettings,
 } from '../../src/shared/settings';
 
 describe('validateSettings', () => {
@@ -16,7 +16,7 @@ describe('validateSettings', () => {
   });
 
   it('preserves valid values', () => {
-    const input: Partial<SkipKeySettings> = {
+    const input: Partial<SkiSettings> = {
       keyCode: 'KeyS',
       ctrlKey: true,
       showToast: false,

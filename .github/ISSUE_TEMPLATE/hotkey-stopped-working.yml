@@ -18,7 +18,7 @@ body:
   - type: input
     id: extension-version
     attributes:
-      label: SkipKey version
+      label: Ski Extension version
       placeholder: "0.1.0 (shown in the options page footer)"
     validations:
       required: true
@@ -56,10 +56,11 @@ body:
     id: console
     attributes:
       label: Console output (optional)
-      description: Open DevTools (F12) → Console and look for lines starting with [SkipKey]
+      description: Open DevTools (F12) → Console and look for lines starting with [Ski]
       render: text
 
   - type: textarea
     id: extra
     attributes:
       label: Anything else?
+

@@ -25,7 +25,7 @@ export function serializeKeyCombo(combo: KeyCombo): string {
 /** Parse a serialized key combo string back into a KeyCombo */
 export function parseKeyCombo(str: string): KeyCombo {
   const parts = str.split('+');
-  const code = parts[parts.length - 1];
+  const code = parts[parts.length - 1] ?? '';
   return {
     code: unformatKeyCode(code),
     ctrlKey: parts.includes('Ctrl'),
