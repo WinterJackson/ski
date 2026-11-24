@@ -5,17 +5,22 @@ export default defineConfig({
   manifest: {
     name: 'Ski Extension: Skip YouTube Ads with a Key',
     description:
-      "Press one key to click YouTube's Skip button. No mouse needed. Free, open source, no tracking.",
+      "Press one key to click YouTube's Skip button. No mouse needed. Auto-skip on mobile. Free, open source, no tracking.",
     version: '0.1.0',
     permissions: ['storage'],
     host_permissions: [
       '*://www.youtube.com/*',
+      '*://m.youtube.com/*',
       '*://www.youtube-nocookie.com/*',
     ],
     web_accessible_resources: [
       {
         resources: ['ski-main.js'],
-        matches: ['*://www.youtube.com/*', '*://www.youtube-nocookie.com/*'],
+        matches: [
+          '*://www.youtube.com/*',
+          '*://m.youtube.com/*',
+          '*://www.youtube-nocookie.com/*',
+        ],
       },
     ],
     browser_specific_settings: {

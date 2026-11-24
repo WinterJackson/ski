@@ -25,6 +25,11 @@ export const SKIP_BUTTON_SELECTORS: readonly string[] = [
   // Container-based fallbacks
   '.ytp-ad-skip-button-container button',
   '.ytp-ad-skip-button-container [role="button"]',
+  // Mobile YouTube web player selectors
+  '.skip-button',
+  '.mobile-topbar-header-sign-in-button + button',
+  '.ad-skip-button',
+  'button.skip-ad-button',
   // Attribute-based selector (works even if classes are obfuscated)
   'button[aria-label^="Skip"]',
   'button[aria-label^="skip"]',
@@ -35,7 +40,7 @@ export const SKIP_BUTTON_SELECTORS: readonly string[] = [
 // ----- Player state selectors -----
 
 /** Selector for the video player container */
-export const PLAYER_SELECTOR = '#movie_player, .html5-video-player';
+export const PLAYER_SELECTOR = '#movie_player, .html5-video-player, .player-container, ytm-player';
 
 /** Class that YouTube adds to the player when an ad is showing */
 export const AD_SHOWING_CLASS = 'ad-showing';

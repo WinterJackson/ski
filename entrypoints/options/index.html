@@ -9,11 +9,33 @@
 <body>
   <main>
     <header>
-      <h1>⏭ Ski Extension Options</h1>
-      <p class="subtitle">Configure your skip hotkey</p>
+      <h1>⏭ Ski Extension</h1>
+      <p class="subtitle">Configure your skip settings</p>
     </header>
 
+    <!-- Device mode indicator (shown on touch devices) -->
+    <div id="touch-banner" class="banner banner-info" hidden>
+      📱 Touch device detected — auto-skip is enabled by default. You can still use a keyboard hotkey if one is connected.
+    </div>
+
     <section class="card">
+      <h2>Behavior</h2>
+      <div class="field">
+        <label class="toggle">
+          <input type="checkbox" id="auto-skip" />
+          <span>Auto-skip ads</span>
+        </label>
+        <p class="hint">Automatically clicks the Skip button the moment it appears — no keypress needed. <strong id="auto-skip-rec" hidden>Recommended for this device.</strong></p>
+      </div>
+      <div class="field">
+        <label class="toggle">
+          <input type="checkbox" id="show-toast" />
+          <span>Show toast notification after skipping</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card" id="hotkey-section">
       <h2>Hotkey</h2>
       <div class="field">
         <label for="hotkey-input">Skip hotkey</label>
@@ -36,26 +58,12 @@
       </div>
       <div class="field">
         <button id="reset-hotkey" type="button" class="link-btn">
-          Reset to default
+          Reset to default (.)
         </button>
       </div>
-    </section>
-
-    <section class="card">
-      <h2>Behavior</h2>
-      <div class="field">
-        <label class="toggle">
-          <input type="checkbox" id="show-toast" />
-          <span>Show toast notification after skipping</span>
-        </label>
-      </div>
-      <div class="field">
-        <label class="toggle">
-          <input type="checkbox" id="auto-skip" />
-          <span>Auto-skip ads (click Skip automatically when it appears)</span>
-        </label>
-        <p class="hint">When enabled, the Skip button is clicked automatically without a keypress.</p>
-      </div>
+      <p class="hint" id="hotkey-hint-mobile" hidden>
+        The hotkey works when a physical or Bluetooth keyboard is connected.
+      </p>
     </section>
 
     <section class="card">

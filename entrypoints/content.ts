@@ -2,8 +2,14 @@
  * Content script entry point.
  * Wires together the detector, hotkey, observer, and toast modules.
  *
- * Runs on YouTube pages. Attaches one capture-phase keydown listener.
+ * Runs on YouTube pages (desktop and mobile web).
+ * Attaches one capture-phase keydown listener.
  * Reads settings from storage and updates them live when they change.
+ *
+ * MOBILE SUPPORT:
+ * On touch devices (tablets, phones), auto-skip defaults to ON on first run.
+ * The hotkey listener is always active — if a keyboard is attached, it works
+ * alongside auto-skip. No explicit mode switching needed.
  */
 
 import { findSkipButton, clickSkipButton, isAdShowing, loadLearnedSelectors } from '../src/content/detector';
@@ -12,6 +18,7 @@ import { onYouTubeNavigate, startAutoSkip, stopAutoSkip } from '../src/content/o
 import { showToast } from '../src/content/toast';
 import {
   loadSettings,
+  saveSettings,
   recordSkip,
   type SkiSettings,
   DEFAULT_SETTINGS,
@@ -20,13 +27,14 @@ import {
 export default defineContentScript({
   matches: [
     '*://www.youtube.com/*',
+    '*://m.youtube.com/*',
     '*://www.youtube-nocookie.com/*',
   ],
   allFrames: true,
   runAt: 'document_idle',
 
   async main() {
-    console.debug('[Ski] Content script loaded');
+    console.debug('[Ski] Content script loaded on:', location.href);
 
     // ── Inject main-world helper script ──
     // Runs in YouTube's JavaScript context to access internal APIs.
@@ -47,6 +55,16 @@ export default defineContentScript({
     ]);
     let settings: SkiSettings = settings_loaded;
 
+    // ── Touch device auto-detection (first run only) ──
+    // On touch devices (phones, tablets), auto-skip is the primary mode
+    // since there's no keyboard. We enable it automatically on first run.
+    // The user can always toggle it off in the options page.
+    await autoDetectTouchDevice(settings);
+    // Reload settings in case we just changed them
+    if (!settings.autoSkipConfigured) {
+      settings = await loadSettings();
+    }
+
     // ── Video title capture (for opt-in history tracking) ──
     function getVideoTitle(): string | undefined {
       if (!settings.trackHistory) return undefined;
@@ -57,9 +75,9 @@ export default defineContentScript({
         return pageTitle.replace(/ - YouTube$/, '').trim() || undefined;
       }
 
-      // Method 2: DOM element fallback for edge cases
+      // Method 2: DOM element fallback for edge cases (mobile YouTube uses different selectors)
       const titleEl = document.querySelector(
-        'h1.ytd-watch-metadata yt-formatted-string, #info h1 yt-formatted-string, h1.ytd-video-primary-info-renderer'
+        'h1.ytd-watch-metadata yt-formatted-string, #info h1 yt-formatted-string, h1.ytd-video-primary-info-renderer, .slim-video-metadata-header-modern h2'
       );
       if (titleEl?.textContent) return titleEl.textContent.trim();
 
@@ -87,6 +105,7 @@ export default defineContentScript({
     }
 
     // --- Keydown handler (capture phase) ---
+    // Always active — works on desktop AND when a keyboard is attached to a mobile device
     function onKeyDown(event: KeyboardEvent): void {
       if (!shouldTriggerSkip(event, settings)) return;
 
@@ -102,7 +121,7 @@ export default defineContentScript({
 
     document.addEventListener('keydown', onKeyDown, { capture: true });
 
-    // --- Auto-skip (opt-in) ---
+    // --- Auto-skip ---
     if (settings.autoSkip) {
       startAutoSkip(() => onSkipSuccess('auto'));
     }
@@ -142,3 +161,34 @@ export default defineContentScript({
     });
   },
 });
+
+/**
+ * Detect if the device is touch-capable and auto-enable auto-skip on first run.
+ *
+ * Uses navigator.maxTouchPoints (reliable on modern browsers) rather than
+ * User-Agent sniffing (which is increasingly unreliable due to Chrome's
+ * User-Agent Reduction initiative and iPads reporting as Macs).
+ *
+ * This runs ONCE — after the first detection, it sets autoSkipConfigured=true
+ * and never overrides the user's choice again.
+ */
+async function autoDetectTouchDevice(settings: SkiSettings): Promise<void> {
+  // Skip if already configured (user has seen the options page or we already ran)
+  if (settings.autoSkipConfigured) return;
+
+  const isTouchDevice = navigator.maxTouchPoints > 0;
+
+  try {
+    if (isTouchDevice) {
+      // Touch device detected — enable auto-skip as default
+      await saveSettings({ autoSkip: true, autoSkipConfigured: true });
+      console.debug('[Ski] Touch device detected — auto-skip enabled by default');
+    } else {
+      // Desktop — just mark as configured, keep default (auto-skip off)
+      await saveSettings({ autoSkipConfigured: true });
+      console.debug('[Ski] Desktop device detected — hotkey mode (auto-skip off)');
+    }
+  } catch {
+    // Non-critical — settings remain at defaults
+  }
+}

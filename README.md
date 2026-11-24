@@ -163,6 +163,16 @@ The options page includes a rich stats dashboard that updates in real time:
 2. Navigate to `about:debugging#/runtime/this-firefox`.
 3. Click **Load Temporary Add-on...** and select any file inside `.output/firefox-mv2/` (e.g., `manifest.json`).
 
+### 📱 Android (Firefox / Kiwi Browser)
+
+Ski Extension works on Android through browsers that support extensions:
+
+- **Firefox for Android** — Install from [Firefox Add-ons (AMO)](https://addons.mozilla.org/firefox/addon/ski-extension/). Auto-skip is enabled by default on touch devices since there's no keyboard.
+- **Kiwi Browser** — A Chromium-based Android browser with extension support. Load the Chrome MV3 build as an unpacked extension just like on desktop.
+
+> [!NOTE]
+> **On touch devices**, Ski Extension automatically detects that no keyboard is present and enables auto-skip by default. If you connect a Bluetooth keyboard, the hotkey works alongside auto-skip — no mode switching needed.
+
 ---
 
 ## 🎮 Usage & Options
@@ -180,9 +190,11 @@ The options page includes a rich stats dashboard that updates in real time:
 
 ### Auto-Skip Mode
 - Toggle **Auto-skip ads** in the options page to enable automatic skipping.
+- **On touch devices (phones/tablets)**, auto-skip is enabled by default on first run — detected via `navigator.maxTouchPoints`.
 - When enabled, Ski Extension watches for ads via a MutationObserver on the player's class attribute (efficient — no subtree watching).
 - When an ad is detected, it polls for the skip button every 300ms and clicks it the moment it becomes available.
 - Stops polling after 30 seconds for unskippable ads to avoid unnecessary CPU usage.
+- The hotkey and auto-skip work **simultaneously** — if a keyboard is connected to a tablet, both are active.
 
 ### Activity Log
 - Toggle **Track recent activity** in the options page.
@@ -243,11 +255,26 @@ ski/
 Ski Extension follows strict privacy-first guidelines:
 
 - **No Remote Code**: Complies with Chrome MV3 security policies. All logic ships within the verified build package.
-- **Minimal Permissions**: Demands only `storage` for user settings and host permissions for `*://www.youtube.com/*` & `*://www.youtube-nocookie.com/*`.
+- **Minimal Permissions**: Demands only `storage` for user settings and host permissions for `youtube.com`, `m.youtube.com`, and `youtube-nocookie.com`.
 - **Zero Analytics or Tracking**: No Google Analytics, no telemetry, no cookies, no Sentry, and no phone-home servers.
 - **Local-Only Stats**: Skip counts and activity logs are stored exclusively in `chrome.storage.local` on your device. Never transmitted.
 - **Opt-In Activity Log**: Video title recording is off by default. When enabled, data stays local and can be cleared with one click.
 - **Audit-Ready**: 100% open source under the MIT License. Read [PRIVACY.md](PRIVACY.md) for full disclosure.
+
+---
+
+## 📱 Platform Support
+
+| Platform | Status | Notes |
+| :--- | :---: | :--- |
+| Chrome / Brave / Edge / Opera (Desktop) | ✅ | Chrome MV3 build |
+| Firefox (Desktop) | ✅ | Firefox MV2 build |
+| Firefox for Android | ✅ | Auto-skip default ON, responsive UI |
+| Kiwi Browser (Android) | ✅ | Chrome MV3 build works as-is |
+| Embedded YouTube (`youtube-nocookie.com`) | ✅ | `allFrames: true` covers iframes |
+| YouTube Mobile App (Android/iOS) | ❌ | Native app — no extension API available |
+| Chrome on Android/iOS | ❌ | Google does not support extensions on mobile Chrome |
+| Smart TVs / Game Consoles | ❌ | Native YouTube app only |
 
 ---
 

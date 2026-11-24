@@ -28,6 +28,8 @@ export interface SkiSettings {
   donationSnoozedUntil: number;
   /** Track video titles in recent activity (opt-in, default off) */
   trackHistory: boolean;
+  /** Whether auto-skip has been configured (first-run detection done) */
+  autoSkipConfigured: boolean;
 }
 
 /** A single skip event recorded in the recent activity log */
@@ -83,6 +85,7 @@ export const DEFAULT_SETTINGS: SkiSettings = {
   donationDismissed: false,
   donationSnoozedUntil: 0,
   trackHistory: false,
+  autoSkipConfigured: false,
 };
 
 /** YouTube's own keyboard shortcuts — warn on conflict */
@@ -143,6 +146,9 @@ export function validateSettings(settings: Partial<SkiSettings>): SkiSettings {
     trackHistory: typeof settings.trackHistory === 'boolean'
       ? settings.trackHistory
       : DEFAULT_SETTINGS.trackHistory,
+    autoSkipConfigured: typeof settings.autoSkipConfigured === 'boolean'
+      ? settings.autoSkipConfigured
+      : DEFAULT_SETTINGS.autoSkipConfigured,
   };
 }
 

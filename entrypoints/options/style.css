@@ -10,6 +10,8 @@
   --accent-dim: rgba(62, 166, 255, 0.15);
   --success: #4ade80;
   --success-dim: rgba(74, 222, 128, 0.15);
+  --info: #60a5fa;
+  --info-dim: rgba(96, 165, 250, 0.1);
   --warning: #f59e0b;
   --danger: #ef4444;
   --danger-dim: rgba(239, 68, 68, 0.1);
@@ -29,8 +31,8 @@ body {
     'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  min-width: 420px;
-  padding: 24px;
+  padding: 24px 16px;
+  -webkit-text-size-adjust: 100%;
 }
 
 main {
@@ -59,6 +61,24 @@ h2 {
   color: var(--text);
 }
 
+/* ── Banners ───────────────────────────────────────────────────────── */
+
+.banner {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.banner-info {
+  background: var(--info-dim);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: var(--info);
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -81,6 +101,8 @@ label {
   margin-bottom: 6px;
 }
 
+/* ── Hotkey Recorder ───────────────────────────────────────────────── */
+
 .hotkey-recorder {
   display: flex;
   gap: 8px;
@@ -96,7 +118,9 @@ label {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-weight: 600;
   padding: 10px 16px;
-  min-width: 180px;
+  min-width: 140px;
+  flex: 1;
+  max-width: 220px;
   text-align: center;
   cursor: pointer;
   outline: none;
@@ -117,6 +141,8 @@ label {
   50% { border-color: var(--accent-hover); }
 }
 
+/* ── Buttons ───────────────────────────────────────────────────────── */
+
 button {
   background: var(--accent);
   color: #000;
@@ -127,10 +153,15 @@ button {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:hover {
   background: var(--accent-hover);
+}
+
+button:active {
+  transform: scale(0.97);
 }
 
 button:focus-visible {
@@ -148,6 +179,11 @@ button:focus-visible {
 
 .link-btn:hover {
   color: var(--text);
+  background: none;
+}
+
+.link-btn:active {
+  transform: none;
 }
 
 .link-btn-danger {
@@ -158,6 +194,8 @@ button:focus-visible {
   color: #f87171;
   background: none;
 }
+
+/* ── Form Elements ─────────────────────────────────────────────────── */
 
 .warning {
   color: var(--warning);
@@ -180,13 +218,15 @@ button:focus-visible {
   gap: 10px;
   cursor: pointer;
   font-weight: 400;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .toggle input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--accent);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 /* ── Stats ─────────────────────────────────────────────────────────── */
@@ -206,7 +246,7 @@ button:focus-visible {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 14px 12px;
   text-align: center;
 }
 
@@ -242,7 +282,7 @@ button:focus-visible {
 
 .stat-label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-muted);
   margin-top: 4px;
@@ -295,6 +335,7 @@ button:focus-visible {
   margin-top: 12px;
   max-height: 320px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .recent-item {
@@ -383,6 +424,135 @@ footer a {
 footer a:hover {
   text-decoration: underline;
 }
+
+/* ── Responsive: Tablet ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  body {
+    padding: 20px 14px;
+  }
+
+  .stats-grid-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-item {
+    padding: 12px 8px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .stat-small .stat-value {
+    font-size: 18px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+}
+
+/* ── Responsive: Mobile Phone ──────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  body {
+    padding: 16px 12px;
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  h2 {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  /* Stack stats on very narrow screens */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stats-grid-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .stat-item {
+    padding: 10px 6px;
+    border-radius: 8px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-small .stat-value {
+    font-size: 16px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Hotkey recorder stacks on mobile */
+  .hotkey-recorder {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #hotkey-input {
+    max-width: 100%;
+    min-width: unset;
+  }
+
+  /* Breakdown legend stacks on mobile */
+  .breakdown-legend {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Recent items get more touch-friendly padding */
+  .recent-item {
+    padding: 12px;
+  }
+
+  .recent-title {
+    font-size: 13px;
+  }
+
+  /* Toggle checkboxes larger for touch */
+  .toggle input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+  }
+
+  .toggle span {
+    font-size: 14px;
+  }
+
+  /* Banner text */
+  .banner {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  footer {
+    font-size: 12px;
+  }
+}
+
+/* ── Reduced Motion ────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   * {

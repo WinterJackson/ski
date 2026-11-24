@@ -1,7 +1,7 @@
 /**
  * Options page script.
  * Handles hotkey recording, settings persistence, stats display,
- * and recent activity log.
+ * recent activity log, and touch-device adaptive UI.
  */
 
 import { serializeKeyCombo, keyComboFromEvent } from '../../src/shared/keycombo';
@@ -30,6 +30,11 @@ const autoSkipCheckbox = document.getElementById('auto-skip') as HTMLInputElemen
 const trackHistoryCheckbox = document.getElementById('track-history') as HTMLInputElement;
 const versionEl = document.getElementById('version') as HTMLElement;
 
+// Touch/mobile elements
+const touchBanner = document.getElementById('touch-banner') as HTMLElement;
+const autoSkipRec = document.getElementById('auto-skip-rec') as HTMLElement;
+const hotkeyHintMobile = document.getElementById('hotkey-hint-mobile') as HTMLElement;
+
 // Stats elements
 const skipCountEl = document.getElementById('skip-count') as HTMLElement;
 const timeSavedEl = document.getElementById('time-saved') as HTMLElement;
@@ -49,6 +54,9 @@ const clearHistoryBtn = document.getElementById('clear-history') as HTMLButtonEl
 let isRecording = false;
 let currentSettings: SkiSettings;
 
+// Detect touch device
+const isTouchDevice = navigator.maxTouchPoints > 0;
+
 // ----- Initialize -----
 async function init(): Promise<void> {
   // Set version from manifest
@@ -58,6 +66,14 @@ async function init(): Promise<void> {
   // Load settings and stats in parallel
   const [settings, stats] = await Promise.all([loadSettings(), loadStats()]);
   currentSettings = settings;
+
+  // Touch device adaptive UI
+  if (isTouchDevice) {
+    touchBanner.hidden = false;
+    autoSkipRec.hidden = false;
+    hotkeyHintMobile.hidden = false;
+  }
+
   updateUI();
   updateStats(stats);
 }
