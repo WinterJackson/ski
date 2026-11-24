@@ -4,39 +4,71 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ski Extension Options</title>
+  <script>
+    // Anti-FOUC: apply saved theme before CSS paints
+    (function() {
+      var t = localStorage.getItem('ski-theme') || 'system';
+      if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <main>
+    <!-- Welcome card (first run, dismissable) -->
+    <div id="welcome-card" class="welcome-card" hidden>
+      <div class="welcome-content">
+        <span class="welcome-icon">👋</span>
+        <div>
+          <h2>Welcome to Ski Extension!</h2>
+          <p id="welcome-text">Press <kbd>Tab</kbd> during a YouTube ad to skip it instantly. Or enable auto-skip below.</p>
+        </div>
+      </div>
+      <button id="welcome-dismiss" type="button" class="welcome-btn">Got it</button>
+    </div>
+
     <header>
-      <h1>⏭ Ski Extension</h1>
-      <p class="subtitle">Configure your skip settings</p>
+      <div class="header-left">
+        <h1>⏭ Ski Extension</h1>
+        <p class="subtitle">Configure your skip settings</p>
+      </div>
+      <button id="theme-toggle" type="button" class="theme-toggle" title="Theme: system" aria-label="Toggle theme">💻</button>
     </header>
 
     <!-- Device mode indicator (shown on touch devices) -->
     <div id="touch-banner" class="banner banner-info" hidden>
-      📱 Touch device detected — auto-skip is enabled by default. You can still use a keyboard hotkey if one is connected.
+      📱 Touch device detected — auto-skip is enabled by default.
     </div>
 
     <section class="card">
-      <h2>Behavior</h2>
-      <div class="field">
-        <label class="toggle">
+      <h2>⚙️ Behavior</h2>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Auto-skip ads</span>
+          <p class="hint">Automatically clicks Skip the moment it appears.<span id="auto-skip-rec" hidden> <strong>Recommended for this device.</strong></span></p>
+        </div>
+        <label class="switch" for="auto-skip">
           <input type="checkbox" id="auto-skip" />
-          <span>Auto-skip ads</span>
+          <span class="slider"></span>
         </label>
-        <p class="hint">Automatically clicks the Skip button the moment it appears — no keypress needed. <strong id="auto-skip-rec" hidden>Recommended for this device.</strong></p>
+        <span class="save-check" aria-hidden="true">✓</span>
       </div>
-      <div class="field">
-        <label class="toggle">
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Show toast notification</span>
+          <p class="hint">Brief confirmation after each skip.</p>
+        </div>
+        <label class="switch" for="show-toast">
           <input type="checkbox" id="show-toast" />
-          <span>Show toast notification after skipping</span>
+          <span class="slider"></span>
         </label>
+        <span class="save-check" aria-hidden="true">✓</span>
       </div>
     </section>
 
     <section class="card" id="hotkey-section">
-      <h2>Hotkey</h2>
+      <h2>⌨️ Hotkey</h2>
       <div class="field">
         <label for="hotkey-input">Skip hotkey</label>
         <div class="hotkey-recorder" id="hotkey-recorder">
@@ -58,7 +90,7 @@
       </div>
       <div class="field">
         <button id="reset-hotkey" type="button" class="link-btn">
-          Reset to default (.)
+          Reset to default (Tab)
         </button>
       </div>
       <p class="hint" id="hotkey-hint-mobile" hidden>
@@ -67,7 +99,7 @@
     </section>
 
     <section class="card">
-      <h2>Stats</h2>
+      <h2>📊 Stats</h2>
       <div class="stats-grid">
         <div class="stat-item stat-primary">
           <span class="stat-value" id="skip-count">0</span>
@@ -105,15 +137,17 @@
     </section>
 
     <section class="card">
-      <h2>Activity Log</h2>
-      <div class="field">
-        <label class="toggle">
+      <h2>📋 Activity Log</h2>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Track recent activity</span>
+          <p class="hint">Records which videos had ads. Data stays on your device.</p>
+        </div>
+        <label class="switch" for="track-history">
           <input type="checkbox" id="track-history" />
-          <span>Track recent activity</span>
+          <span class="slider"></span>
         </label>
-        <p class="hint">
-          Records which videos had ads when you skipped. Data stays on your device — never sent anywhere.
-        </p>
+        <span class="save-check" aria-hidden="true">✓</span>
       </div>
       <div id="recent-activity-section" hidden>
         <div id="recent-list" class="recent-list">

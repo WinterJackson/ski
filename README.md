@@ -48,7 +48,7 @@ Most tools that deal with ads use invasive tactics: injecting network filters, m
 ## ✨ Key Features
 
 ### Core Skip Engine
-- ⌨️ **Single Hotkey Skip** — Tap your configured key (default: `.`) to instantly trigger YouTube's Skip button without moving the mouse.
+- ⌨️ **Single Hotkey Skip** — Tap your configured key (default: `Tab`) to instantly trigger YouTube's Skip button without moving the mouse.
 - 🤖 **Optional Auto-Skip** — Opt-in background observer mode that automatically clicks the Skip button the moment the countdown ends — no keypress needed.
 - 🔁 **Consecutive Ad Handling** — Automatically handles back-to-back ads (Ad 1 of 2 → Ad 2 of 2). A single keypress skips Ad 1 and then auto-detects and skips Ad 2 within seconds. Works in both manual and auto-skip modes.
 - 🔄 **Configurable Hotkey** — Change to any key or key combination (e.g., `Shift+S`, `X`, `Ctrl+.`) from the options page. Changes apply instantly across all YouTube tabs — no reload needed.
@@ -179,7 +179,7 @@ Ski Extension works on Android through browsers that support extensions:
 ## 🎮 Usage & Options
 
 1. Open any YouTube video with an ad.
-2. As soon as the countdown finishes and the **Skip Ad** button appears, press your hotkey (default: **`.`**).
+2. As soon as the countdown finishes and the **Skip Ad** button appears, press your hotkey (default: **`Tab`**).
 3. The ad skips immediately.
 
 ### Customizing Your Hotkey
@@ -187,7 +187,7 @@ Ski Extension works on Android through browsers that support extensions:
 - Click **Change** in the Hotkey recorder and press your desired key or combination (e.g., `Shift + S`, `X`, `Ctrl + .`).
 - The recorder will alert you if your chosen key clashes with YouTube default shortcuts (like `K` for pause, `J`/`L` for seek, or `F` for fullscreen).
 - Changes take effect immediately — no page reload needed.
-- Click **Reset to default** to restore the Period (`.`) key.
+- Click **Reset to default** to restore the `Tab` key.
 
 ### Auto-Skip Mode
 - Toggle **Auto-skip ads** in the options page to enable automatic skipping.

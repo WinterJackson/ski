@@ -72,9 +72,9 @@ const MAX_RECENT_SKIPS = 50;
 /** Days of daily skip data to retain */
 const DAILY_SKIPS_RETENTION_DAYS = 90;
 
-/** Default settings — the key is Period (.) which is not used by YouTube */
+/** Default settings — Tab key (not a YouTube shortcut, no conflicts) */
 export const DEFAULT_SETTINGS: SkiSettings = {
-  keyCode: 'Period',
+  keyCode: 'Tab',
   ctrlKey: false,
   altKey: false,
   shiftKey: false,
@@ -108,8 +108,7 @@ export const YOUTUBE_SHORTCUTS: ReadonlySet<string> = new Set([
   'Home',
   'End',
   'Comma',    // decrease playback speed
-  // Note: Period (.) increases playback speed on YouTube, but we use it
-  // as default because it's less commonly used. The options page warns about this.
+  'Period',   // increase playback speed
 ]);
 
 /**

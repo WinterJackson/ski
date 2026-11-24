@@ -125,7 +125,8 @@ export default defineContentScript({
           checks++;
           if (!isAdShowing()) {
             clearInterval(checkInterval);
-            try { showToast(); } catch { /* non-critical */ }
+            const msg = method === 'auto' ? 'Ad auto-skipped ⚡' : 'Ad skipped ⏭';
+            try { showToast(msg); } catch { /* non-critical */ }
           } else if (checks > 20) {
             clearInterval(checkInterval);
             try { showToast('Attempting to skip...'); } catch { /* non-critical */ }

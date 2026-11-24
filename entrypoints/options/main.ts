@@ -1,7 +1,7 @@
 /**
  * Options page script.
  * Handles hotkey recording, settings persistence, stats display,
- * recent activity log, and touch-device adaptive UI.
+ * recent activity log, theme management, and touch-device adaptive UI.
  */
 
 import { serializeKeyCombo, keyComboFromEvent } from '../../src/shared/keycombo';
@@ -20,7 +20,8 @@ import {
   type RecentSkip,
 } from '../../src/shared/settings';
 
-// ----- DOM references -----
+// ── DOM references ───────────────────────────────────────────────────
+
 const hotkeyInput = document.getElementById('hotkey-input') as HTMLInputElement;
 const recordBtn = document.getElementById('record-btn') as HTMLButtonElement;
 const resetBtn = document.getElementById('reset-hotkey') as HTMLButtonElement;
@@ -51,14 +52,116 @@ const recentActivitySection = document.getElementById('recent-activity-section')
 const recentListEl = document.getElementById('recent-list') as HTMLElement;
 const clearHistoryBtn = document.getElementById('clear-history') as HTMLButtonElement;
 
+// Welcome card elements
+const welcomeCard = document.getElementById('welcome-card') as HTMLElement;
+const welcomeDismissBtn = document.getElementById('welcome-dismiss') as HTMLButtonElement;
+const welcomeText = document.getElementById('welcome-text') as HTMLElement;
+
 let isRecording = false;
 let currentSettings: SkiSettings;
+let isFirstLoad = true;
 
 // Detect touch device
 const isTouchDevice = navigator.maxTouchPoints > 0;
 
-// ----- Initialize -----
+// ── Theme Management ─────────────────────────────────────────────────
+
+type ThemeMode = 'system' | 'light' | 'dark';
+let currentTheme: ThemeMode = 'system';
+
+function loadTheme(): void {
+  const saved = localStorage.getItem('ski-theme') as ThemeMode | null;
+  currentTheme = saved && ['system', 'light', 'dark'].includes(saved) ? saved : 'system';
+  applyTheme();
+}
+
+function applyTheme(): void {
+  let resolved: 'light' | 'dark';
+  if (currentTheme === 'system') {
+    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } else {
+    resolved = currentTheme;
+  }
+  document.documentElement.setAttribute('data-theme', resolved);
+  updateThemeIcon();
+}
+
+function cycleTheme(): void {
+  const modes: ThemeMode[] = ['system', 'light', 'dark'];
+  const idx = modes.indexOf(currentTheme);
+  currentTheme = modes[(idx + 1) % modes.length] ?? 'system';
+  localStorage.setItem('ski-theme', currentTheme);
+  applyTheme();
+}
+
+function updateThemeIcon(): void {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  const icons: Record<ThemeMode, string> = { system: '💻', light: '☀️', dark: '🌙' };
+  btn.textContent = icons[currentTheme];
+  btn.title = `Theme: ${currentTheme}`;
+}
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (currentTheme === 'system') applyTheme();
+});
+
+// ── Count-up Animation ───────────────────────────────────────────────
+
+function animateCountUp(el: HTMLElement, target: number, suffix = '', duration = 600): void {
+  if (target === 0) {
+    el.textContent = '0' + suffix;
+    return;
+  }
+  const start = performance.now();
+  const update = (now: number) => {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // easeOutCubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(eased * target);
+    el.textContent = current.toLocaleString() + suffix;
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      el.textContent = target.toLocaleString() + suffix;
+    }
+  };
+  requestAnimationFrame(update);
+}
+
+// ── Save Confirmation ────────────────────────────────────────────────
+
+function showSaveConfirm(input: HTMLElement): void {
+  const row = input.closest('.setting-row');
+  if (!row) return;
+  const check = row.querySelector('.save-check');
+  if (!check) return;
+  check.classList.add('show');
+  setTimeout(() => check.classList.remove('show'), 1500);
+}
+
+// ── Welcome Card ─────────────────────────────────────────────────────
+
+function initWelcomeCard(): void {
+  if (localStorage.getItem('ski-welcome-dismissed')) return;
+  welcomeCard.hidden = false;
+
+  // Customize message for touch devices
+  if (isTouchDevice) {
+    welcomeText.innerHTML =
+      'Auto-skip is enabled — ads will be skipped automatically. ' +
+      'Connect a keyboard to use the <kbd>Tab</kbd> hotkey too.';
+  }
+}
+
+// ── Initialize ───────────────────────────────────────────────────────
+
 async function init(): Promise<void> {
+  // Apply theme immediately
+  loadTheme();
+
   // Set version from manifest
   const manifest = browser.runtime.getManifest();
   versionEl.textContent = manifest.version ?? '0.1.0';
@@ -73,6 +176,9 @@ async function init(): Promise<void> {
     autoSkipRec.hidden = false;
     hotkeyHintMobile.hidden = false;
   }
+
+  // Welcome card
+  initWelcomeCard();
 
   updateUI();
   updateStats(stats);
@@ -101,16 +207,28 @@ function updateUI(): void {
 function updateStats(stats: SkiStats): void {
   const { skipCount, autoSkipCount, manualSkipCount } = stats;
 
-  // Main counters
-  skipCountEl.textContent = skipCount.toLocaleString();
+  if (isFirstLoad) {
+    // Animate counters on first load
+    animateCountUp(skipCountEl, skipCount);
+    animateCountUp(skipsTodayEl, getSkipsToday(stats));
+    animateCountUp(skipsWeekEl, getSkipsThisWeek(stats));
+    animateCountUp(manualCountEl, manualSkipCount);
+    isFirstLoad = false;
+  } else {
+    // Instant update with bump animation
+    skipCountEl.textContent = skipCount.toLocaleString();
+    skipCountEl.classList.add('bump');
+    setTimeout(() => skipCountEl.classList.remove('bump'), 200);
+
+    skipsTodayEl.textContent = getSkipsToday(stats).toLocaleString();
+    skipsWeekEl.textContent = getSkipsThisWeek(stats).toLocaleString();
+    manualCountEl.textContent = manualSkipCount.toLocaleString();
+  }
+
+  // These don't animate (formatted strings)
   timeSavedEl.textContent = `~${formatTimeSaved(skipCount)}`;
 
-  // Periodic
-  skipsTodayEl.textContent = getSkipsToday(stats).toLocaleString();
-  skipsWeekEl.textContent = getSkipsThisWeek(stats).toLocaleString();
-
-  // Breakdown
-  manualCountEl.textContent = manualSkipCount.toLocaleString();
+  // Legend counts
   manualCountLegendEl.textContent = manualSkipCount.toLocaleString();
   autoCountEl.textContent = autoSkipCount.toLocaleString();
 
@@ -172,7 +290,8 @@ function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
-// ----- Hotkey recording -----
+// ── Hotkey Recording ─────────────────────────────────────────────────
+
 function startRecording(): void {
   isRecording = true;
   hotkeyInput.value = 'Press a key...';
@@ -231,7 +350,8 @@ document.addEventListener('keydown', async (event: KeyboardEvent) => {
   stopRecording();
 });
 
-// ----- Reset to default -----
+// ── Reset to Default ─────────────────────────────────────────────────
+
 resetBtn.addEventListener('click', async () => {
   currentSettings = {
     ...currentSettings,
@@ -253,36 +373,65 @@ resetBtn.addEventListener('click', async () => {
   updateUI();
 });
 
-// ----- Toggles -----
+// ── Toggle Listeners ─────────────────────────────────────────────────
+
 showToastCheckbox.addEventListener('change', async () => {
   currentSettings.showToast = showToastCheckbox.checked;
   await saveSettings({ showToast: currentSettings.showToast });
+  showSaveConfirm(showToastCheckbox);
 });
 
 autoSkipCheckbox.addEventListener('change', async () => {
   currentSettings.autoSkip = autoSkipCheckbox.checked;
   await saveSettings({ autoSkip: currentSettings.autoSkip });
+  showSaveConfirm(autoSkipCheckbox);
 });
 
 trackHistoryCheckbox.addEventListener('change', async () => {
   currentSettings.trackHistory = trackHistoryCheckbox.checked;
   await saveSettings({ trackHistory: currentSettings.trackHistory });
   recentActivitySection.hidden = !currentSettings.trackHistory;
+  showSaveConfirm(trackHistoryCheckbox);
 });
 
-// ----- Clear history -----
+// ── Clear History ────────────────────────────────────────────────────
+
 clearHistoryBtn.addEventListener('click', async () => {
   await clearRecentSkips();
   renderRecentSkips([]);
 });
 
-// ----- Live stats updates -----
+// ── Welcome Card Dismiss ─────────────────────────────────────────────
+
+welcomeDismissBtn.addEventListener('click', () => {
+  welcomeCard.hidden = true;
+  localStorage.setItem('ski-welcome-dismissed', '1');
+});
+
+// ── Theme Toggle ─────────────────────────────────────────────────────
+
+document.getElementById('theme-toggle')?.addEventListener('click', cycleTheme);
+
+// ── Live Stats Updates ───────────────────────────────────────────────
+
 browser.storage.onChanged.addListener(async (changes, areaName) => {
+  if (areaName === 'sync') {
+    const updated: Partial<SkiSettings> = {};
+    for (const [key, change] of Object.entries(changes)) {
+      if (key in DEFAULT_SETTINGS) {
+        (updated as Record<string, unknown>)[key] = change.newValue;
+      }
+    }
+    currentSettings = { ...currentSettings, ...updated };
+    updateUI();
+  }
+
   if (areaName === 'local' && ('skipCount' in changes || 'autoSkipCount' in changes || 'manualSkipCount' in changes || 'dailySkips' in changes || 'recentSkips' in changes)) {
     const stats = await loadStats();
     updateStats(stats);
   }
 });
 
-// ----- Start -----
+// ── Start ────────────────────────────────────────────────────────────
+
 init();

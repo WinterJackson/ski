@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ski Extension</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem('ski-theme') || 'system';
+      if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="popup">
+    <header>
+      <div class="header-left">
+        <span class="logo">⏭</span>
+        <h1>Ski</h1>
+      </div>
+      <button id="open-options" class="icon-btn" title="Full settings" aria-label="Open full settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
+    </header>
+
+    <div class="toggle-section">
+      <div class="toggle-row">
+        <span class="toggle-label">Auto-Skip</span>
+        <label class="switch" for="auto-skip-toggle">
+          <input type="checkbox" id="auto-skip-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <p class="toggle-hint" id="toggle-hint">Hotkey mode — press <kbd id="hotkey-display">Tab</kbd> to skip</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat">
+        <span class="stat-value stat-accent" id="skip-count">0</span>
+        <span class="stat-label">skipped</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-value stat-success" id="time-saved">0s</span>
+        <span class="stat-label">saved</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-value" id="today-count">0</span>
+        <span class="stat-label">today</span>
+      </div>
+    </div>
+
+    <footer>
+      <span class="version">v<span id="version">0.1.0</span></span>
+      <a href="#" id="full-settings">Full settings →</a>
+    </footer>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

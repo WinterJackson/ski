@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - Initial project scaffolding with WXT and TypeScript
 - Content script with layered Skip button detection
-- Configurable hotkey with modifier support (default: `.`)
+- Configurable hotkey with modifier support (default: `Tab`)
 - Typing-context guard (ignores hotkey in inputs, textareas, contenteditable)
 - SPA navigation support via `yt-navigate-finish`
 - Optional toast notification on successful skip

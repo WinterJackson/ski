@@ -10,7 +10,7 @@ function makeKeyEvent(
 ): KeyboardEvent {
   const { targetTag, contentEditable, ...eventInit } = overrides;
   const event = new KeyboardEvent('keydown', {
-    code: 'Period',
+    code: 'Tab',
     ctrlKey: false,
     altKey: false,
     shiftKey: false,
@@ -61,7 +61,7 @@ describe('isTypingContext', () => {
 
 describe('shouldTriggerSkip', () => {
   it('returns true for matching key on a non-typing target', () => {
-    const event = makeKeyEvent({ code: 'Period', targetTag: 'DIV' });
+    const event = makeKeyEvent({ code: 'Tab', targetTag: 'DIV' });
     expect(shouldTriggerSkip(event, DEFAULT_SETTINGS)).toBe(true);
   });
 
@@ -71,12 +71,12 @@ describe('shouldTriggerSkip', () => {
   });
 
   it('returns false for repeat events', () => {
-    const event = makeKeyEvent({ code: 'Period', targetTag: 'DIV', repeat: true });
+    const event = makeKeyEvent({ code: 'Tab', targetTag: 'DIV', repeat: true });
     expect(shouldTriggerSkip(event, DEFAULT_SETTINGS)).toBe(false);
   });
 
   it('returns false when typing in an input', () => {
-    const event = makeKeyEvent({ code: 'Period', targetTag: 'INPUT' });
+    const event = makeKeyEvent({ code: 'Tab', targetTag: 'INPUT' });
     expect(shouldTriggerSkip(event, DEFAULT_SETTINGS)).toBe(false);
   });
 

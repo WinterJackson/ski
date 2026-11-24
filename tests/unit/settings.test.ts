@@ -77,9 +77,8 @@ describe('hasYouTubeConflict', () => {
   });
 
   it('no conflict for non-YouTube key', () => {
-    const settings = { ...DEFAULT_SETTINGS, keyCode: 'Period' };
-    // Period is actually in the YouTube set (increases speed), but
-    // the default is deliberate. The test checks the conflict detection works.
+    const settings = { ...DEFAULT_SETTINGS, keyCode: 'Tab' };
+    // Tab is NOT a YouTube shortcut, so there's no conflict
     expect(hasYouTubeConflict(settings)).toBe(false);
   });
 
