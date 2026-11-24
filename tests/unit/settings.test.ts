@@ -106,6 +106,13 @@ describe('formatTimeSaved', () => {
     expect(formatTimeSaved(480)).toBe('2h');      // 7200s
     expect(formatTimeSaved(250)).toBe('1h 2m');   // 3750s
   });
+
+  it('formats days for very large counts', () => {
+    expect(formatTimeSaved(5760)).toBe('1d');       // 86400s = 24h
+    expect(formatTimeSaved(6000)).toBe('1d 1h');    // 90000s = 25h
+    expect(formatTimeSaved(11520)).toBe('2d');      // 172800s = 48h
+    expect(formatTimeSaved(12000)).toBe('2d 2h');   // 180000s = 50h
+  });
 });
 
 describe('getSkipsToday', () => {

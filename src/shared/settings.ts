@@ -307,7 +307,10 @@ export function getSkipsThisWeek(stats: SkiStats): number {
 
 /**
  * Format seconds into a human-readable string.
- * e.g., 90 → "1m 30s", 3661 → "1h 1m"
+ * e.g., 90 → "1m 30s", 3661 → "1h 1m", 86400 → "1d"
+ *
+ * Tiers: seconds → minutes → hours → days
+ * Each tier shows at most two units for readability (e.g., "1h 2m" not "1h 2m 30s").
  */
 export function formatTimeSaved(totalSkips: number): string {
   const seconds = totalSkips * AVG_AD_DURATION_SECONDS;
@@ -318,7 +321,12 @@ export function formatTimeSaved(totalSkips: number): string {
     return remaining > 0 ? `${minutes}m ${remaining}s` : `${minutes}m`;
   }
   const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  if (hours < 24) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
 }
 
