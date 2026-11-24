@@ -20,6 +20,24 @@
       <button id="welcome-dismiss" type="button" class="welcome-btn">Got it</button>
     </div>
 
+    <!-- Donation milestone card (shown after 25+ skips, dismissable/snoozeable) -->
+    <div id="donation-card" class="donation-card" hidden>
+      <div class="donation-header">
+        <span class="donation-icon">☕</span>
+        <div class="donation-info">
+          <h3>Enjoying Ski Extension?</h3>
+          <p id="donation-text">You've skipped <strong id="donation-skip-count">25</strong> ads with Ski! Ski is 100% free, private, and ad-free. If it has saved you time, consider buying a coffee to support development.</p>
+        </div>
+      </div>
+      <div class="donation-actions">
+        <a href="https://buymeacoffee.com/winterjackson" target="_blank" rel="noopener" class="btn-donate">
+          ☕ Buy Me a Coffee
+        </a>
+        <button id="donation-snooze" type="button" class="btn-subtle">Maybe later</button>
+        <button id="donation-dismiss" type="button" class="btn-subtle btn-subtle-dim">Don't show again</button>
+      </div>
+    </div>
+
     <header>
       <div class="header-left">
         <h1>⏭ Ski Extension</h1>
@@ -161,6 +179,29 @@
             Clear history
           </button>
         </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>❤️ Support & Share</h2>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Support Development</span>
+          <p class="hint">Keep Ski Extension free, independent, and actively maintained.</p>
+        </div>
+        <a href="https://buymeacoffee.com/winterjackson" target="_blank" rel="noopener" class="btn-donate-sm">
+          ☕ Buy Coffee
+        </a>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Spread the Word</span>
+          <p class="hint">Share Ski with friends and family to help them skip ads too.</p>
+        </div>
+        <button id="share-btn" type="button" class="btn-secondary-sm">
+          🔗 Share Ski
+        </button>
+        <span id="share-toast" class="save-check" aria-hidden="true">Copied!</span>
       </div>
     </section>
 

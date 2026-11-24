@@ -58,6 +58,16 @@ const welcomeCard = document.getElementById('welcome-card') as HTMLElement;
 const welcomeDismissBtn = document.getElementById('welcome-dismiss') as HTMLButtonElement;
 const welcomeText = document.getElementById('welcome-text') as HTMLElement;
 
+// Donation card elements
+const donationCard = document.getElementById('donation-card') as HTMLElement;
+const donationSkipCount = document.getElementById('donation-skip-count') as HTMLElement;
+const donationSnoozeBtn = document.getElementById('donation-snooze') as HTMLButtonElement;
+const donationDismissBtn = document.getElementById('donation-dismiss') as HTMLButtonElement;
+
+// Share elements
+const shareBtn = document.getElementById('share-btn') as HTMLButtonElement;
+const shareToast = document.getElementById('share-toast') as HTMLElement;
+
 let isRecording = false;
 let currentSettings: SkiSettings;
 let isFirstLoad = true;
@@ -251,6 +261,25 @@ function updateStats(stats: SkiStats): void {
 
   // Recent activity
   renderRecentSkips(stats.recentSkips);
+
+  // Check donation milestone prompt (25+ skips)
+  checkDonationMilestone(stats);
+}
+
+function checkDonationMilestone(stats: SkiStats): void {
+  if (!donationCard) return;
+  const isEligible = stats.skipCount >= 25;
+  const isDismissed = currentSettings.donationDismissed;
+  const isSnoozed = Date.now() < currentSettings.donationSnoozedUntil;
+
+  if (isEligible && !isDismissed && !isSnoozed) {
+    if (donationSkipCount) {
+      donationSkipCount.textContent = stats.skipCount.toLocaleString();
+    }
+    donationCard.hidden = false;
+  } else {
+    donationCard.hidden = true;
+  }
 }
 
 function renderRecentSkips(skips: RecentSkip[]): void {
@@ -432,6 +461,51 @@ clearHistoryBtn.addEventListener('click', async () => {
 welcomeDismissBtn.addEventListener('click', () => {
   welcomeCard.hidden = true;
   localStorage.setItem('ski-welcome-dismissed', '1');
+});
+
+// ── Donation Card Handlers ───────────────────────────────────────────
+
+donationSnoozeBtn?.addEventListener('click', async () => {
+  const snoozeUntil = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+  currentSettings.donationSnoozedUntil = snoozeUntil;
+  donationCard.hidden = true;
+  await saveSettings({ donationSnoozedUntil: snoozeUntil });
+});
+
+donationDismissBtn?.addEventListener('click', async () => {
+  currentSettings.donationDismissed = true;
+  donationCard.hidden = true;
+  await saveSettings({ donationDismissed: true });
+});
+
+// ── Share Button Handler ─────────────────────────────────────────────
+
+shareBtn?.addEventListener('click', async () => {
+  const shareUrl = 'https://github.com/WinterJackson/ski';
+  const shareData = {
+    title: 'Ski Extension — Skip YouTube Ads with a Key',
+    text: 'Check out Ski Extension: a fast, private browser extension to skip YouTube ads instantly with one key or auto-skip.',
+    url: shareUrl,
+  };
+
+  try {
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      await navigator.share(shareData);
+      return;
+    }
+  } catch {
+    // Fall back to clipboard below
+  }
+
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    if (shareToast) {
+      shareToast.classList.add('show');
+      setTimeout(() => shareToast.classList.remove('show'), 2000);
+    }
+  } catch {
+    // Non-critical
+  }
 });
 
 // ── Theme Toggle ─────────────────────────────────────────────────────

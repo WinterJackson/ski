@@ -139,6 +139,154 @@ h2 {
 
 /* ── Welcome Card ──────────────────────────────────────────────────── */
 
+.donation-card {
+  background: linear-gradient(135deg, rgba(255, 129, 63, 0.12), rgba(62, 166, 255, 0.1));
+  border: 1px solid rgba(255, 129, 63, 0.35);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  animation: cardIn 0.4s ease both;
+}
+
+:root[data-theme="dark"] .donation-card {
+  background: linear-gradient(135deg, rgba(255, 129, 63, 0.16), rgba(62, 166, 255, 0.12));
+  border-color: rgba(255, 129, 63, 0.4);
+}
+
+.donation-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.donation-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.donation-info h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.donation-info p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.donation-info strong {
+  color: var(--accent);
+}
+
+.donation-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-donate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ff813f;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn-donate:hover {
+  opacity: 0.9;
+}
+
+.btn-donate:active {
+  transform: scale(0.97);
+}
+
+.btn-donate-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ff813f;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-donate-sm:hover {
+  opacity: 0.9;
+}
+
+.btn-donate-sm:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-secondary-sm:hover {
+  background: var(--border);
+  border-color: var(--accent);
+}
+
+.btn-secondary-sm:active {
+  transform: scale(0.97);
+}
+
+.btn-subtle {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-subtle:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.btn-subtle-dim {
+  border-color: transparent;
+}
+
+.btn-subtle-dim:hover {
+  border-color: var(--border);
+}
+
+/* ── Welcome Card ──────────────────────────────────────────────────── */
+
 .welcome-card {
   background: linear-gradient(135deg, var(--accent-dim), var(--success-dim));
   border: 1px solid var(--accent);

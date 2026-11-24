@@ -374,6 +374,30 @@ footer {
   border-top: 1px solid var(--border);
 }
 
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-dot {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.donate-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff813f;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.donate-link:hover {
+  opacity: 0.85;
+}
+
 .version {
   font-size: 11px;
   color: var(--text-muted);
