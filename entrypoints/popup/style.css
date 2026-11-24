@@ -34,6 +34,12 @@
   padding: 0;
 }
 
+html {
+  /* Rounded popup window — clips all content to 20px corners */
+  border-radius: 20px;
+  overflow: hidden;
+}
+
 body {
   width: 320px;
   background: var(--bg);
