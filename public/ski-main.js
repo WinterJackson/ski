@@ -22,6 +22,8 @@
       '.ytp-ad-skip-button-container',
       '.ytp-ad-skip-button-slot button',
       '.ytp-ad-skip-button-slot',
+      '.ytp-ad-skip-button-container [role="button"]',
+      '.ytp-ad-skip-button-slot [role="button"]',
     ];
 
     var clicked = false;
@@ -38,7 +40,7 @@
       } catch(e) {}
     }
 
-    // ── Strategy B: Text-match buttons inside the player ──
+    // ── Strategy B: Text-match buttons inside the player (multilingual) ──
     if (!clicked) {
       var player = document.getElementById('movie_player') ||
                    document.querySelector('.html5-video-player');
@@ -46,9 +48,11 @@
         var items = player.querySelectorAll(
           'button, [role="button"], a.ytp-ad-button'
         );
+        // Known skip text patterns across languages
+        var skipPatterns = /^(skip|passer|saltar|pular|salta|overslaan|überspringen|atla|ohita|pomiń|přeskočit|omiteți|παράλειψη|пропустить|пропустити|スキップ|건너뛰기|跳过|跳過|تخطي|تخطى|דלג|छोड़ें|ข้าม|lewati|langkau|ruka|hoppa|spring|hopp)/i;
         for (var k = 0; k < items.length; k++) {
           var text = (items[k].textContent || '').trim();
-          if (/^skip/i.test(text) && (items[k].offsetParent !== null || items[k].offsetWidth > 0)) {
+          if (skipPatterns.test(text) && (items[k].offsetParent !== null || items[k].offsetWidth > 0)) {
             items[k].click();
             clicked = true;
           }
@@ -58,42 +62,28 @@
 
     // ── Strategy C: YouTube Player API ──
     // The internal player object has methods only accessible from main world.
-    try {
-      var moviePlayer = document.getElementById('movie_player');
-      if (moviePlayer) {
-        // Some YouTube versions expose these methods
-        if (typeof moviePlayer.skipAd === 'function') {
-          moviePlayer.skipAd();
-          return;
-        }
-        if (typeof moviePlayer.cancelPlayback === 'function') {
-          // Cancel ad playback and reload the main video
-          var videoData = typeof moviePlayer.getVideoData === 'function'
-            ? moviePlayer.getVideoData()
-            : null;
-          if (videoData && videoData.video_id) {
-            moviePlayer.cancelPlayback();
-            setTimeout(function() {
-              if (typeof moviePlayer.loadVideoById === 'function') {
-                moviePlayer.loadVideoById(videoData.video_id);
-              }
-            }, 100);
+    if (!clicked) {
+      try {
+        var moviePlayer = document.getElementById('movie_player');
+        if (moviePlayer) {
+          if (typeof moviePlayer.skipAd === 'function') {
+            moviePlayer.skipAd();
             return;
           }
         }
-      }
-    } catch(e) {}
+      } catch(e) {}
+    }
 
     // ── Strategy D: Seek every playing video past its end ──
     // This causes the ad to end naturally, triggering YouTube's own
     // ad-completion handler which transitions to the content video.
-    // The native HTMLVideoElement.currentTime setter cannot be intercepted
-    // or blocked by YouTube's JavaScript.
-    var videos = document.querySelectorAll('video');
-    for (var v = 0; v < videos.length; v++) {
-      var vid = videos[v];
-      if (vid.duration && isFinite(vid.duration) && vid.currentTime < vid.duration - 0.5) {
-        vid.currentTime = vid.duration;
+    if (!clicked) {
+      var videos = document.querySelectorAll('video');
+      for (var v = 0; v < videos.length; v++) {
+        var vid = videos[v];
+        if (vid.duration && isFinite(vid.duration) && vid.currentTime < vid.duration - 0.5) {
+          vid.currentTime = vid.duration;
+        }
       }
     }
   });

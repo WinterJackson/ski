@@ -16,6 +16,7 @@ export const SKIP_BUTTON_SELECTORS: readonly string[] = [
   // Modern variant with ytp-button base class
   '.ytp-ad-skip-button-slot button.ytp-button',
   '.ytp-ad-skip-button-slot button',
+  '.ytp-ad-skip-button-slot [role="button"]',
   // Legacy selectors (still seen as fallbacks)
   'button.ytp-skip-ad-button',
   '.ytp-skip-ad-button',
@@ -23,9 +24,12 @@ export const SKIP_BUTTON_SELECTORS: readonly string[] = [
   '.ytp-ad-skip-button',
   // Container-based fallbacks
   '.ytp-ad-skip-button-container button',
+  '.ytp-ad-skip-button-container [role="button"]',
   // Attribute-based selector (works even if classes are obfuscated)
   'button[aria-label^="Skip"]',
   'button[aria-label^="skip"]',
+  '[role="button"][aria-label^="Skip"]',
+  '[role="button"][aria-label^="skip"]',
 ];
 
 // ----- Player state selectors -----
@@ -39,14 +43,15 @@ export const AD_SHOWING_CLASS = 'ad-showing';
 /** Full selector for a player currently showing an ad */
 export const AD_SHOWING_SELECTOR = `.${AD_SHOWING_CLASS}`;
 
-// ----- Ad overlay selectors (for heuristic scoring) -----
+// ----- Ad overlay selectors (for heuristic scoring & ad detection) -----
 
-/** Selectors for ad-related containers to help discovery */
+/** Selectors for ad-related containers to help discovery and ad detection */
 export const AD_CONTAINER_SELECTORS: readonly string[] = [
   '.ytp-ad-module',
   '.video-ads',
   '.ytp-ad-player-overlay',
   '.ytp-ad-overlay-container',
+  '.ytp-ad-player-overlay-layout',
 ];
 
 // ----- Localized "Skip" strings -----
@@ -55,37 +60,118 @@ export const AD_CONTAINER_SELECTORS: readonly string[] = [
  * Known "Skip" button text in various languages.
  * Used as a structural fallback when class selectors fail.
  * Add new translations as they're discovered.
+ *
+ * IMPORTANT: These are checked with text.startsWith(skipStr),
+ * so "Skip" matches "Skip", "Skip Ad", "Skip Ads", etc.
  */
 export const SKIP_STRINGS: readonly string[] = [
-  'Skip',         // English
-  'Skip Ad',      // English (variant)
-  'Skip Ads',     // English (plural)
-  'Skip ad',      // English (lowercase)
-  'Skip ads',     // English (lowercase plural)
-  'Überspringen', // German
-  'Passer',       // French
-  'Saltar',       // Spanish
-  'Pular',        // Portuguese
-  'Lewati',       // Indonesian
-  'Atla',         // Turkish
-  'Пропустить',   // Russian
-  'スキップ',      // Japanese
-  '건너뛰기',      // Korean
-  '跳过',          // Chinese (Simplified)
-  '跳過',          // Chinese (Traditional)
-  'تخطي',         // Arabic
-  'छोड़ें',         // Hindi
-  'Ignorer',      // French (variant)
-  'Hoppa över',   // Swedish
-  'Overslaan',    // Dutch
-  'Ohita',        // Finnish
+  // English
+  'Skip',
+  'Skip Ad',
+  'Skip Ads',
+  'Skip ad',
+  'Skip ads',
+  // German
+  'Überspringen',
+  'Werbung überspringen',
+  // French
+  'Passer',
+  'Ignorer',
+  "Passer l'annonce",
+  // Spanish
+  'Saltar',
+  'Saltar anuncio',
+  'Omitir',
+  // Portuguese
+  'Pular',
+  'Pular anúncio',
+  // Italian
+  'Salta',
+  "Salta l'annuncio",
+  // Dutch
+  'Overslaan',
+  'Advertentie overslaan',
+  // Swedish
+  'Hoppa över',
+  // Finnish
+  'Ohita',
+  // Norwegian
+  'Hopp over',
+  // Danish
+  'Spring over',
+  // Polish
+  'Pomiń',
+  // Czech
+  'Přeskočit',
+  // Romanian
+  'Omiteți',
+  // Hungarian
+  'Kihagyás',
+  // Greek
+  'Παράλειψη',
+  // Russian
+  'Пропустить',
+  // Ukrainian
+  'Пропустити',
+  // Turkish
+  'Atla',
+  'Reklamı atla',
+  // Arabic
+  'تخطي',
+  'تخطى',
+  // Hebrew
+  'דלג',
+  // Hindi
+  'छोड़ें',
+  // Thai
+  'ข้าม',
+  // Vietnamese
+  'Bỏ qua',
+  // Indonesian / Malay
+  'Lewati',
+  'Langkau',
+  // Japanese
+  'スキップ',
+  '広告をスキップ',
+  // Korean
+  '건너뛰기',
+  '광고 건너뛰기',
+  // Chinese (Simplified)
+  '跳过',
+  '跳过广告',
+  // Chinese (Traditional)
+  '跳過',
+  '跳過廣告',
+  // Bengali
+  'এড়িয়ে যান',
+  // Tamil
+  'தவிர்',
+  // Swahili
+  'Ruka',
 ];
 
 // ----- aria-label patterns -----
 
-/** Patterns to match the Skip button by aria-label */
+/**
+ * Patterns to match the Skip button by aria-label.
+ * Covers English and common patterns across languages.
+ */
 export const SKIP_ARIA_PATTERNS: readonly RegExp[] = [
   /^skip/i,
   /^skip\s+ad/i,
   /^skip\s+ads/i,
+  /überspringen/i,
+  /passer/i,
+  /saltar/i,
+  /pular/i,
+  /salta/i,
+  /overslaan/i,
+  /пропустить/i,
+  /atla/i,
+  /تخطي/,
+  /スキップ/,
+  /건너뛰기/,
+  /跳过|跳過/,
+  /lewati/i,
+  /pomiń/i,
 ];

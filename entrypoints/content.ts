@@ -47,6 +47,26 @@ export default defineContentScript({
     ]);
     let settings: SkiSettings = settings_loaded;
 
+    // ── Shared skip feedback handler ──
+    function onSkipSuccess(): void {
+      if (settings.showToast) {
+        // Wait until ad is actually gone before showing toast
+        let checks = 0;
+        const checkInterval = setInterval(() => {
+          checks++;
+          if (!isAdShowing()) {
+            clearInterval(checkInterval);
+            try { showToast(); } catch { /* non-critical */ }
+          } else if (checks > 20) {
+            clearInterval(checkInterval);
+            try { showToast('Attempting to skip...'); } catch { /* non-critical */ }
+          }
+        }, 200);
+      }
+      incrementSkipCount();
+      console.debug('[Ski] Ad skipped');
+    }
+
     // --- Keydown handler (capture phase) ---
     function onKeyDown(event: KeyboardEvent): void {
       if (!shouldTriggerSkip(event, settings)) return;
@@ -58,36 +78,14 @@ export default defineContentScript({
       event.preventDefault();
       event.stopPropagation();
       clickSkipButton(button);
-
-      // Optional toast feedback (delayed — only show when ad is actually gone)
-      if (settings.showToast) {
-        const showToastWhenSkipped = () => {
-          let checks = 0;
-          const checkInterval = setInterval(() => {
-            checks++;
-            if (!isAdShowing()) {
-              clearInterval(checkInterval);
-              try { showToast(); } catch { /* non-critical */ }
-            } else if (checks > 20) {
-              // Ad still showing after 4 seconds — show toast anyway as feedback
-              clearInterval(checkInterval);
-              try { showToast('Attempting to skip...'); } catch { /* non-critical */ }
-            }
-          }, 200);
-        };
-        showToastWhenSkipped();
-      }
-
-      // Track skip count (fire and forget)
-      incrementSkipCount();
-      console.debug('[Ski] Ad skipped');
+      onSkipSuccess();
     }
 
     document.addEventListener('keydown', onKeyDown, { capture: true });
 
     // --- Auto-skip (opt-in) ---
     if (settings.autoSkip) {
-      startAutoSkip();
+      startAutoSkip(onSkipSuccess);
     }
 
     // --- SPA navigation: re-initialize when YouTube navigates ---
@@ -95,10 +93,8 @@ export default defineContentScript({
       // Auto-skip needs to re-attach to the new player
       if (settings.autoSkip) {
         stopAutoSkip();
-        // Delay slightly to let the player DOM render
-        setTimeout(() => {
-          if (settings.autoSkip) startAutoSkip();
-        }, 500);
+        // The new startAutoSkip retries internally if player isn't ready yet
+        startAutoSkip(onSkipSuccess);
       }
     });
 
@@ -119,7 +115,7 @@ export default defineContentScript({
       // Handle auto-skip toggle
       if ('autoSkip' in updated) {
         if (settings.autoSkip) {
-          startAutoSkip();
+          startAutoSkip(onSkipSuccess);
         } else {
           stopAutoSkip();
         }
