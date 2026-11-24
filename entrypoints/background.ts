@@ -39,7 +39,7 @@ export default defineBackground(() => {
         await api.setBadgeBackgroundColor({ color: '#8e8e93' });
       } else if (result.autoSkip) {
         await api.setBadgeText({ text: 'ON' });
-        await api.setBadgeBackgroundColor({ color: '#30d158' });
+        await api.setBadgeBackgroundColor({ color: '#3ea6ff' });
       } else {
         await api.setBadgeText({ text: '' });
       }
