@@ -57,6 +57,12 @@ async function init(): Promise<void> {
   todayCountEl.textContent = getSkipsToday(stats).toLocaleString();
 }
 
+function createKbd(text: string): HTMLElement {
+  const kbd = document.createElement('kbd');
+  kbd.textContent = text;
+  return kbd;
+}
+
 function renderPowerState(settings: SkiSettings): void {
   const isEnabled = settings.enabled;
   const isAutoSkip = settings.autoSkip;
@@ -78,10 +84,18 @@ function renderPowerState(settings: SkiSettings): void {
 
     if (isAutoSkip) {
       powerSubtitle.textContent = 'Auto-skipping ads';
-      powerHint.innerHTML = `Auto-skip active ⚡ (or press <kbd>${keyLabel}</kbd>)`;
+      powerHint.replaceChildren(
+        document.createTextNode('Auto-skip active ⚡ (or press '),
+        createKbd(keyLabel),
+        document.createTextNode(')')
+      );
     } else {
       powerSubtitle.textContent = 'Hotkey mode active';
-      powerHint.innerHTML = `Press <kbd>${keyLabel}</kbd> during an ad to skip`;
+      powerHint.replaceChildren(
+        document.createTextNode('Press '),
+        createKbd(keyLabel),
+        document.createTextNode(' during an ad to skip')
+      );
     }
   } else {
     powerCard.classList.remove('is-active');

@@ -144,7 +144,7 @@ export function showToast(message = 'Ad skipped ⏭'): void {
   if (!shadowRootRef) return;
 
   // Rebuild shadow content with current theme
-  shadowRootRef.innerHTML = '';
+  shadowRootRef.replaceChildren();
 
   const style = document.createElement('style');
   style.textContent = buildStyles(isDark, isMobile);
@@ -165,13 +165,25 @@ export function showToast(message = 'Ad skipped ⏭'): void {
     text = message.replace(/⏭/g, '').trim();
   }
 
-  toast.innerHTML = `
-    <div class="toast-content">
-      <span class="toast-icon">${icon}</span>
-      <span class="toast-text">${text}</span>
-    </div>
-    <div class="progress-bar"></div>
-  `;
+  const content = document.createElement('div');
+  content.className = 'toast-content';
+
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'toast-icon';
+  iconSpan.textContent = icon;
+
+  const textSpan = document.createElement('span');
+  textSpan.className = 'toast-text';
+  textSpan.textContent = text;
+
+  content.appendChild(iconSpan);
+  content.appendChild(textSpan);
+
+  const progressBar = document.createElement('div');
+  progressBar.className = 'progress-bar';
+
+  toast.appendChild(content);
+  toast.appendChild(progressBar);
 
   shadowRootRef.appendChild(style);
   shadowRootRef.appendChild(toast);

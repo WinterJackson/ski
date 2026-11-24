@@ -151,9 +151,13 @@ function initWelcomeCard(): void {
 
   // Customize message for touch devices
   if (isTouchDevice) {
-    welcomeText.innerHTML =
-      'Auto-skip is enabled — ads will be skipped automatically. ' +
-      'Connect a keyboard to use the <kbd>Tab</kbd> hotkey too.';
+    const kbd = document.createElement('kbd');
+    kbd.textContent = 'Tab';
+    welcomeText.replaceChildren(
+      document.createTextNode('Auto-skip is enabled — ads will be skipped automatically. Connect a keyboard to use the '),
+      kbd,
+      document.createTextNode(' hotkey too.')
+    );
   }
 }
 
@@ -250,27 +254,47 @@ function updateStats(stats: SkiStats): void {
 }
 
 function renderRecentSkips(skips: RecentSkip[]): void {
+  recentListEl.replaceChildren();
+
   if (!skips || skips.length === 0) {
-    recentListEl.innerHTML = '<p class="hint">No activity yet. Skip some ads!</p>';
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = 'No activity yet. Skip some ads!';
+    recentListEl.appendChild(p);
     return;
   }
 
-  recentListEl.innerHTML = skips
-    .slice(0, 20)
-    .map((skip) => {
-      const time = formatTimeAgo(skip.timestamp);
-      const icon = skip.method === 'auto' ? '⚡' : '⌨';
-      const methodLabel = skip.method === 'auto' ? 'Auto' : 'Manual';
-      const title = escapeHtml(skip.title || 'Unknown video');
-      return `<div class="recent-item">
-        <span class="recent-icon">${icon}</span>
-        <div class="recent-info">
-          <span class="recent-title">${title}</span>
-          <span class="recent-meta">${methodLabel} · ${time}</span>
-        </div>
-      </div>`;
-    })
-    .join('');
+  for (const skip of skips.slice(0, 20)) {
+    const time = formatTimeAgo(skip.timestamp);
+    const icon = skip.method === 'auto' ? '⚡' : '⌨';
+    const methodLabel = skip.method === 'auto' ? 'Auto' : 'Manual';
+    const title = skip.title || 'Unknown video';
+
+    const item = document.createElement('div');
+    item.className = 'recent-item';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'recent-icon';
+    iconSpan.textContent = icon;
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'recent-info';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'recent-title';
+    titleSpan.textContent = title;
+
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'recent-meta';
+    metaSpan.textContent = `${methodLabel} · ${time}`;
+
+    infoDiv.appendChild(titleSpan);
+    infoDiv.appendChild(metaSpan);
+    item.appendChild(iconSpan);
+    item.appendChild(infoDiv);
+
+    recentListEl.appendChild(item);
+  }
 }
 
 function formatTimeAgo(timestamp: number): string {
@@ -284,12 +308,6 @@ function formatTimeAgo(timestamp: number): string {
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days}d ago`;
   return new Date(timestamp).toLocaleDateString();
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 // ── Hotkey Recording ─────────────────────────────────────────────────
