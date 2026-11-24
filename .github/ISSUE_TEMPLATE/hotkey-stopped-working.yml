@@ -19,7 +19,7 @@ body:
     id: extension-version
     attributes:
       label: Ski Extension version
-      placeholder: "0.1.0 (shown in the options page footer)"
+      placeholder: "1.0.0 (shown in the options page footer)"
     validations:
       required: true
 

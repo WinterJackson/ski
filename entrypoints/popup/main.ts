@@ -29,7 +29,7 @@ const fullSettingsLink = document.getElementById('full-settings') as HTMLElement
 async function init(): Promise<void> {
   // Version
   const manifest = browser.runtime.getManifest();
-  versionEl.textContent = manifest.version ?? '0.1.0';
+  versionEl.textContent = manifest.version ?? '1.0.0';
 
   // Load settings + stats in parallel
   const [settings, stats] = await Promise.all([loadSettings(), loadStats()]);

@@ -6,7 +6,7 @@ export default defineConfig({
     name: 'Ski Extension: Skip YouTube Ads with a Key',
     description:
       "Press one key to click YouTube's Skip button. No mouse needed. Auto-skip on mobile. Free, open source, no tracking.",
-    version: '0.1.0',
+    version: '1.0.0',
     permissions: ['storage'],
     host_permissions: [
       '*://www.youtube.com/*',
