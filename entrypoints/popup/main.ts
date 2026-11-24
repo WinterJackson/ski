@@ -102,3 +102,4 @@ browser.storage.onChanged.addListener(async (changes, areaName) => {
 // ── Start ────────────────────────────────────────────────────────────
 
 init();
+

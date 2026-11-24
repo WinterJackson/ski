@@ -179,13 +179,36 @@ export async function incrementSkipCount(): Promise<number> {
 }
 
 /**
+ * Promise queue to serialize recordSkip calls.
+ * Prevents TOCTOU race conditions when two skips happen near-simultaneously
+ * (e.g., rapid consecutive ads). Each read-modify-write completes before
+ * the next one starts.
+ */
+let recordQueue: Promise<void> = Promise.resolve();
+
+/**
  * Record a skip event with full stats tracking.
  * Updates all counters, daily breakdown, and optionally the recent activity log.
+ *
+ * Calls are serialized via a promise queue to prevent race conditions
+ * where two near-simultaneous calls could read the same old value and
+ * lose an increment.
  *
  * @param method  — 'manual' (hotkey) or 'auto' (auto-skip)
  * @param videoTitle — the video title (only stored if trackHistory is enabled)
  */
 export async function recordSkip(
+  method: 'manual' | 'auto',
+  videoTitle?: string,
+): Promise<void> {
+  // Chain onto the queue — each call waits for the previous one to finish
+  const thisCall = recordQueue.then(() => recordSkipInner(method, videoTitle));
+  recordQueue = thisCall.catch(() => { /* keep the chain alive on errors */ });
+  return thisCall;
+}
+
+/** Internal implementation — always called serially via the queue above */
+async function recordSkipInner(
   method: 'manual' | 'auto',
   videoTitle?: string,
 ): Promise<void> {

@@ -135,8 +135,13 @@ export default defineContentScript({
       }
       recordSkip(method, getVideoTitle());
       console.debug(`[Ski] Ad skipped (${method})`);
-      // Watch for a consecutive ad (Ad 2 of 2) after this skip
-      watchForConsecutiveAd(method);
+      // Watch for a consecutive ad (Ad 2 of 2) after this skip.
+      // ONLY for manual skips — the auto-skip observer's polling loop
+      // already handles consecutive ads via its built-in cooldown + grace
+      // period mechanism. Running both would double-count Ad 2.
+      if (method === 'manual') {
+        watchForConsecutiveAd(method);
+      }
     }
 
     // --- Keydown handler (capture phase) ---
