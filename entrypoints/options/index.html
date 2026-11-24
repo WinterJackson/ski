@@ -60,7 +60,63 @@
 
     <section class="card">
       <h2>Stats</h2>
-      <p>Ads skipped: <strong id="skip-count">0</strong></p>
+      <div class="stats-grid">
+        <div class="stat-item stat-primary">
+          <span class="stat-value" id="skip-count">0</span>
+          <span class="stat-label">Ads Skipped</span>
+        </div>
+        <div class="stat-item stat-accent">
+          <span class="stat-value" id="time-saved">0s</span>
+          <span class="stat-label">Time Saved</span>
+        </div>
+      </div>
+      <div class="stats-grid stats-grid-3">
+        <div class="stat-item stat-small">
+          <span class="stat-value" id="skips-today">0</span>
+          <span class="stat-label">Today</span>
+        </div>
+        <div class="stat-item stat-small">
+          <span class="stat-value" id="skips-week">0</span>
+          <span class="stat-label">This Week</span>
+        </div>
+        <div class="stat-item stat-small">
+          <span class="stat-value" id="manual-count">0</span>
+          <span class="stat-label">Manual</span>
+        </div>
+      </div>
+      <div class="stats-breakdown">
+        <div class="breakdown-bar">
+          <div class="breakdown-manual" id="breakdown-manual" style="width: 100%"></div>
+          <div class="breakdown-auto" id="breakdown-auto" style="width: 0%"></div>
+        </div>
+        <div class="breakdown-legend">
+          <span class="legend-manual">⌨ Manual: <strong id="manual-count-legend">0</strong></span>
+          <span class="legend-auto">⚡ Auto: <strong id="auto-count">0</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Activity Log</h2>
+      <div class="field">
+        <label class="toggle">
+          <input type="checkbox" id="track-history" />
+          <span>Track recent activity</span>
+        </label>
+        <p class="hint">
+          Records which videos had ads when you skipped. Data stays on your device — never sent anywhere.
+        </p>
+      </div>
+      <div id="recent-activity-section" hidden>
+        <div id="recent-list" class="recent-list">
+          <p class="hint">No activity yet. Skip some ads!</p>
+        </div>
+        <div class="recent-actions">
+          <button id="clear-history" type="button" class="link-btn link-btn-danger">
+            Clear history
+          </button>
+        </div>
+      </div>
     </section>
 
     <footer>
@@ -76,4 +132,3 @@
   <script type="module" src="./main.ts"></script>
 </body>
 </html>
-

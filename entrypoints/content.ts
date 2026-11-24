@@ -12,7 +12,7 @@ import { onYouTubeNavigate, startAutoSkip, stopAutoSkip } from '../src/content/o
 import { showToast } from '../src/content/toast';
 import {
   loadSettings,
-  incrementSkipCount,
+  recordSkip,
   type SkiSettings,
   DEFAULT_SETTINGS,
 } from '../src/shared/settings';
@@ -47,8 +47,27 @@ export default defineContentScript({
     ]);
     let settings: SkiSettings = settings_loaded;
 
+    // ── Video title capture (for opt-in history tracking) ──
+    function getVideoTitle(): string | undefined {
+      if (!settings.trackHistory) return undefined;
+
+      // Method 1: document.title is the most reliable across all YouTube layouts
+      const pageTitle = document.title;
+      if (pageTitle && pageTitle !== 'YouTube') {
+        return pageTitle.replace(/ - YouTube$/, '').trim() || undefined;
+      }
+
+      // Method 2: DOM element fallback for edge cases
+      const titleEl = document.querySelector(
+        'h1.ytd-watch-metadata yt-formatted-string, #info h1 yt-formatted-string, h1.ytd-video-primary-info-renderer'
+      );
+      if (titleEl?.textContent) return titleEl.textContent.trim();
+
+      return 'Unknown video';
+    }
+
     // ── Shared skip feedback handler ──
-    function onSkipSuccess(): void {
+    function onSkipSuccess(method: 'manual' | 'auto'): void {
       if (settings.showToast) {
         // Wait until ad is actually gone before showing toast
         let checks = 0;
@@ -63,8 +82,8 @@ export default defineContentScript({
           }
         }, 200);
       }
-      incrementSkipCount();
-      console.debug('[Ski] Ad skipped');
+      recordSkip(method, getVideoTitle());
+      console.debug(`[Ski] Ad skipped (${method})`);
     }
 
     // --- Keydown handler (capture phase) ---
@@ -78,14 +97,14 @@ export default defineContentScript({
       event.preventDefault();
       event.stopPropagation();
       clickSkipButton(button);
-      onSkipSuccess();
+      onSkipSuccess('manual');
     }
 
     document.addEventListener('keydown', onKeyDown, { capture: true });
 
     // --- Auto-skip (opt-in) ---
     if (settings.autoSkip) {
-      startAutoSkip(onSkipSuccess);
+      startAutoSkip(() => onSkipSuccess('auto'));
     }
 
     // --- SPA navigation: re-initialize when YouTube navigates ---
@@ -94,7 +113,7 @@ export default defineContentScript({
       if (settings.autoSkip) {
         stopAutoSkip();
         // The new startAutoSkip retries internally if player isn't ready yet
-        startAutoSkip(onSkipSuccess);
+        startAutoSkip(() => onSkipSuccess('auto'));
       }
     });
 
@@ -115,7 +134,7 @@ export default defineContentScript({
       // Handle auto-skip toggle
       if ('autoSkip' in updated) {
         if (settings.autoSkip) {
-          startAutoSkip(onSkipSuccess);
+          startAutoSkip(() => onSkipSuccess('auto'));
         } else {
           stopAutoSkip();
         }

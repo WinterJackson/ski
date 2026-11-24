@@ -1,13 +1,18 @@
 :root {
   --bg: #0f0f0f;
   --surface: #1a1a1a;
+  --surface-hover: #222;
   --border: #2a2a2a;
   --text: #e8e8e8;
   --text-muted: #888;
   --accent: #3ea6ff;
   --accent-hover: #65b8ff;
+  --accent-dim: rgba(62, 166, 255, 0.15);
+  --success: #4ade80;
+  --success-dim: rgba(74, 222, 128, 0.15);
   --warning: #f59e0b;
   --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.1);
   --radius: 12px;
 }
 
@@ -145,6 +150,15 @@ button:focus-visible {
   color: var(--text);
 }
 
+.link-btn-danger {
+  color: var(--danger);
+}
+
+.link-btn-danger:hover {
+  color: #f87171;
+  background: none;
+}
+
 .warning {
   color: var(--warning);
   font-size: 13px;
@@ -175,6 +189,183 @@ button:focus-visible {
   cursor: pointer;
 }
 
+/* ── Stats ─────────────────────────────────────────────────────────── */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stats-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.stat-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.stat-primary {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.stat-accent {
+  border-color: var(--success);
+  background: var(--success-dim);
+}
+
+.stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.stat-primary .stat-value {
+  color: var(--accent);
+}
+
+.stat-accent .stat-value {
+  color: var(--success);
+}
+
+.stat-small .stat-value {
+  font-size: 20px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Breakdown bar */
+.stats-breakdown {
+  margin-top: 4px;
+}
+
+.breakdown-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--border);
+  margin-bottom: 8px;
+}
+
+.breakdown-manual {
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.breakdown-auto {
+  background: var(--success);
+  transition: width 0.3s ease;
+}
+
+.breakdown-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.legend-manual strong {
+  color: var(--accent);
+}
+
+.legend-auto strong {
+  color: var(--success);
+}
+
+/* ── Recent Activity ───────────────────────────────────────────────── */
+
+.recent-list {
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.recent-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  transition: background 0.1s;
+}
+
+.recent-item:hover {
+  background: var(--surface-hover);
+}
+
+.recent-item + .recent-item {
+  border-top: 1px solid var(--border);
+}
+
+.recent-icon {
+  font-size: 16px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.recent-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.recent-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.recent-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Scrollbar styling for recent list */
+.recent-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recent-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.recent-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ── Footer ────────────────────────────────────────────────────────── */
+
 footer {
   margin-top: 32px;
   padding-top: 16px;
@@ -199,4 +390,3 @@ footer a:hover {
     transition: none !important;
   }
 }
-
