@@ -50,6 +50,7 @@ Most tools that deal with ads use invasive tactics: injecting network filters, m
 ### Core Skip Engine
 - ⌨️ **Single Hotkey Skip** — Tap your configured key (default: `.`) to instantly trigger YouTube's Skip button without moving the mouse.
 - 🤖 **Optional Auto-Skip** — Opt-in background observer mode that automatically clicks the Skip button the moment the countdown ends — no keypress needed.
+- 🔁 **Consecutive Ad Handling** — Automatically handles back-to-back ads (Ad 1 of 2 → Ad 2 of 2). A single keypress skips Ad 1 and then auto-detects and skips Ad 2 within seconds. Works in both manual and auto-skip modes.
 - 🔄 **Configurable Hotkey** — Change to any key or key combination (e.g., `Shift+S`, `X`, `Ctrl+.`) from the options page. Changes apply instantly across all YouTube tabs — no reload needed.
 
 ### Self-Healing Detection
@@ -193,6 +194,7 @@ Ski Extension works on Android through browsers that support extensions:
 - **On touch devices (phones/tablets)**, auto-skip is enabled by default on first run — detected via `navigator.maxTouchPoints`.
 - When enabled, Ski Extension watches for ads via a MutationObserver on the player's class attribute (efficient — no subtree watching).
 - When an ad is detected, it polls for the skip button every 300ms and clicks it the moment it becomes available.
+- **Consecutive ads** (Ad 1 of 2 → Ad 2 of 2) are handled automatically: after clicking Ad 1's skip button, polling continues with a brief cooldown, then catches and skips Ad 2.
 - Stops polling after 30 seconds for unskippable ads to avoid unnecessary CPU usage.
 - The hotkey and auto-skip work **simultaneously** — if a keyboard is connected to a tablet, both are active.
 
@@ -241,11 +243,11 @@ ski/
 
 | Module | Lines | Responsibility |
 | :--- | :---: | :--- |
-| `detector.ts` | ~670 | Core detection engine: `isAdShowing()`, `findSkipButton()`, `discoverSkipButton()`, `clickSkipButton()`, selector learning, heuristic scoring |
+| `detector.ts` | ~690 | Core detection engine: `isAdShowing()`, `findSkipButton()`, `discoverSkipButton()`, `clickSkipButton()` with consecutive-ad grace period, selector learning, heuristic scoring |
 | `selectors.ts` | ~177 | All CSS selectors, 30+ language skip strings, aria-label patterns, ad container selectors |
-| `observer.ts` | ~163 | Auto-skip MutationObserver (class-attribute only), SPA navigation hooks, polling loop |
+| `observer.ts` | ~200 | Auto-skip MutationObserver (class-attribute only), SPA navigation hooks, polling loop with consecutive-ad cooldown |
 | `settings.ts` | ~290 | Settings & stats types, `recordSkip()`, `loadStats()`, formatters, validators |
-| `content.ts` | ~125 | Wiring: loads settings, attaches keydown handler, manages auto-skip lifecycle, video title capture |
+| `content.ts` | ~160 | Wiring: loads settings, attaches keydown handler, manages auto-skip lifecycle, consecutive-ad watcher, video title capture |
 | `ski-main.js` | ~90 | Main-world helper: clicks buttons from YouTube's JS context, multilingual fallback, YouTube API, video seek |
 
 ---
