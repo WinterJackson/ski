@@ -22,5 +22,5 @@
 - **Source Code:** Download `ski-1.0.0-sources.zip` for building from source.
 
 ### 📜 License & Attribution
-MIT License © 2026 [Winter Jackson](https://github.com/WinterJackson), under Xinteck Digital Solutions.
+MIT License © 2026 [Winter Jackson](https://github.com/WinterJackson), under [Xinteck Digital Solutions](https://xinteck.co.ke/).
 
