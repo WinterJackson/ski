@@ -126,27 +126,54 @@ function handleAdStateChange(player: Element, onSkip?: AutoSkipCallback): void {
 /**
  * Poll for the skip button every 300ms until found or ad ends.
  * Uses the full clickSkipButton engine (which includes retry + seek fallback).
+ *
+ * CONSECUTIVE AD HANDLING:
+ * After clicking the skip button for Ad 1, we don't stop polling immediately.
+ * Instead, we enter a "cooldown" period (1 second) to avoid re-clicking the
+ * same button, then continue polling to catch Ad 2. Polling only stops when
+ * isAdShowing() is false AND we've waited through a grace period (to handle
+ * the brief gap between consecutive ads where ad-showing flickers off).
  */
 function startSkipPolling(player: Element, onSkip?: AutoSkipCallback): void {
   // Don't start duplicate polling
   if (autoSkipPollTimer) return;
 
   let attempts = 0;
-  const MAX_ATTEMPTS = 100; // 30 seconds max (300ms × 100)
+  let cooldownRemaining = 0;  // polls to skip after a successful click
+  let gracePeriod = 0;        // how many polls since ad-showing went false
+  const MAX_ATTEMPTS = 100;   // 30 seconds max (300ms × 100)
+  const COOLDOWN_POLLS = 4;   // ~1.2 seconds after clicking before retrying
+  const MAX_GRACE = 7;        // ~2.1 seconds to detect a consecutive ad
 
   autoSkipPollTimer = setInterval(() => {
     attempts++;
 
-    // Stop conditions
-    if (!player.classList.contains(AD_SHOWING_CLASS) || !isAdShowing()) {
+    // Hard timeout — give up after 30 seconds
+    if (attempts > MAX_ATTEMPTS) {
       clearInterval(autoSkipPollTimer!);
       autoSkipPollTimer = null;
       return;
     }
-    if (attempts > MAX_ATTEMPTS) {
-      // Ad has been showing for 30+ seconds with no skip button — it's unskippable
-      clearInterval(autoSkipPollTimer!);
-      autoSkipPollTimer = null;
+
+    const adActive = player.classList.contains(AD_SHOWING_CLASS) || isAdShowing();
+
+    if (!adActive) {
+      // Ad NOT showing — could be a brief gap between consecutive ads
+      gracePeriod++;
+      if (gracePeriod >= MAX_GRACE) {
+        // No follow-up ad appeared — truly done
+        clearInterval(autoSkipPollTimer!);
+        autoSkipPollTimer = null;
+      }
+      return;
+    }
+
+    // Ad IS showing — reset grace period
+    gracePeriod = 0;
+
+    // During cooldown, skip click attempts (button for Ad 1 may still be in DOM)
+    if (cooldownRemaining > 0) {
+      cooldownRemaining--;
       return;
     }
 
@@ -155,9 +182,10 @@ function startSkipPolling(player: Element, onSkip?: AutoSkipCallback): void {
     if (button) {
       clickSkipButton(button);
       onSkip?.();
-      // Stop polling — clickSkipButton has its own retry loop
-      clearInterval(autoSkipPollTimer!);
-      autoSkipPollTimer = null;
+      // Enter cooldown — don't immediately re-click the same button
+      cooldownRemaining = COOLDOWN_POLLS;
+      // Reset attempts so we have a full timeout window for the next ad
+      attempts = 0;
     }
   }, AUTO_SKIP_POLL_MS);
 }

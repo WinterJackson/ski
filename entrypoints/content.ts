@@ -84,6 +84,38 @@ export default defineContentScript({
       return 'Unknown video';
     }
 
+    // ── Consecutive-ad watcher ──
+    // After every successful skip, monitors for a follow-up ad (Ad 2 of 2)
+    // and auto-clicks it. This ensures a single keypress handles double ads.
+    let consecutiveAdTimer: ReturnType<typeof setInterval> | null = null;
+
+    function watchForConsecutiveAd(method: 'manual' | 'auto'): void {
+      if (consecutiveAdTimer) clearInterval(consecutiveAdTimer);
+      let attempts = 0;
+      consecutiveAdTimer = setInterval(() => {
+        attempts++;
+        // Stop after 10 seconds or when the ad phase is truly over
+        if (attempts > 20) {
+          clearInterval(consecutiveAdTimer!);
+          consecutiveAdTimer = null;
+          return;
+        }
+        // During the brief gap between ads, isAdShowing() may be false — keep watching
+        if (!isAdShowing()) return;
+        // Ad is showing again — look for the skip button
+        const button = findSkipButton();
+        if (button) {
+          clearInterval(consecutiveAdTimer!);
+          consecutiveAdTimer = null;
+          // Small delay to let YouTube fully initialize the new skip button
+          setTimeout(() => {
+            clickSkipButton(button);
+            onSkipSuccess(method);
+          }, 150);
+        }
+      }, 500);
+    }
+
     // ── Shared skip feedback handler ──
     function onSkipSuccess(method: 'manual' | 'auto'): void {
       if (settings.showToast) {
@@ -102,6 +134,8 @@ export default defineContentScript({
       }
       recordSkip(method, getVideoTitle());
       console.debug(`[Ski] Ad skipped (${method})`);
+      // Watch for a consecutive ad (Ad 2 of 2) after this skip
+      watchForConsecutiveAd(method);
     }
 
     // --- Keydown handler (capture phase) ---

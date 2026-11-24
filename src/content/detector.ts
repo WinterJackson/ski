@@ -591,30 +591,52 @@ export function clickSkipButton(button: HTMLElement): void {
   try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
 
   // ── Retry loop: escalate until ad is gone ──
+  // Handles consecutive ads (Ad 1 of 2 → Ad 2 of 2) with a grace period.
+  // When isAdShowing() briefly goes false between ads, we don't immediately
+  // stop — we wait up to 2 seconds for a follow-up ad to appear.
   if (skipRetryTimer) clearInterval(skipRetryTimer);
   let attempt = 0;
+  let gracePeriod = 0;        // counts how many polls since ad-showing went false
+  const MAX_GRACE = 10;       // 10 × 200ms = 2 seconds to detect a consecutive ad
+  const MAX_ATTEMPTS = 25;    // 25 × 200ms = 5 seconds total
   skipRetryTimer = setInterval(() => {
     attempt++;
-    if (!isAdShowing() || attempt > 15) {
+
+    const adActive = isAdShowing();
+
+    if (adActive) {
+      // Ad is showing — reset grace period (might be Ad 2 starting)
+      gracePeriod = 0;
+
+      // Re-try clicking (button might have reappeared or become interactive)
+      const btn = findSkipButton();
+      if (btn) {
+        btn.click();
+        clickAllSkipElements(btn);
+      }
+
+      // After 200ms (attempt 1), escalate to video seek
+      if (attempt >= 1) {
+        seekPastAd();
+      }
+
+      // Re-dispatch to main-world every 400ms
+      if (attempt % 2 === 0) {
+        try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
+      }
+    } else {
+      // Ad NOT showing — but might be a brief gap between consecutive ads
+      gracePeriod++;
+      if (gracePeriod >= MAX_GRACE) {
+        // No follow-up ad appeared within 2 seconds — truly done
+        if (skipRetryTimer) { clearInterval(skipRetryTimer); skipRetryTimer = null; }
+        return;
+      }
+    }
+
+    // Hard limit: don't loop forever
+    if (attempt > MAX_ATTEMPTS) {
       if (skipRetryTimer) { clearInterval(skipRetryTimer); skipRetryTimer = null; }
-      return;
-    }
-
-    // Re-try clicking (button might have reappeared or become interactive)
-    const btn = findSkipButton();
-    if (btn) {
-      btn.click();
-      clickAllSkipElements(btn);
-    }
-
-    // After 200ms (attempt 1), escalate to video seek
-    if (attempt >= 1) {
-      seekPastAd();
-    }
-
-    // Re-dispatch to main-world every 400ms
-    if (attempt % 2 === 0) {
-      try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
     }
   }, 200);
 }
