@@ -14,12 +14,13 @@
   <img src="https://img.shields.io/badge/Chrome-Manifest_V3-34A853?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome MV3" />
   <img src="https://img.shields.io/badge/Firefox-Supported-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox" />
   <img src="https://img.shields.io/badge/TypeScript-Ready-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Bundle_Size-12_KB-success?style=for-the-badge" alt="Size" />
+  <img src="https://img.shields.io/badge/Tests-75_Passing-success?style=for-the-badge" alt="Tests" />
 </p>
 
 <p align="center">
   <a href="#-key-features">Key Features</a> •
   <a href="#-how-self-healing-works">Adaptive Self-Healing</a> •
+  <a href="#-stats-dashboard">Stats Dashboard</a> •
   <a href="#-installation">Installation</a> •
   <a href="#-usage--options">Usage & Options</a> •
   <a href="#-architecture">Architecture</a> •
@@ -40,20 +41,33 @@ Most tools that deal with ads use invasive tactics: injecting network filters, m
 4. **Nothing else changes.** Your player stays standard, stable, and compliant.
 
 > [!TIP]
-> **Zero telemetry, zero external network calls.** The entire unpacked script weighs under **15 KB** with zero runtime dependencies.
+> **Zero telemetry, zero external network calls.** The entire unpacked content script weighs under **17 KB** with zero runtime dependencies.
 
 ---
 
 ## ✨ Key Features
 
-- ⌨️ **Single Hotkey Skip**: Tap your configured key (default: `.`) to instantly trigger YouTube's Skip button without moving the mouse.
-- 🛡️ **Typing-Context Guard**: Smart inspection ignores keypresses while you're typing in YouTube comments, search bars, textareas, inputs, or `contenteditable` tags.
-- 🧠 **Adaptive Self-Healing Engine**: Uses a 4-layer fallback pipeline with weighted heuristic scoring. If YouTube obfuscates or renames class names, Ski Extension identifies the button by position, DOM context, and metadata, then **learns and caches** the new selector automatically.
-- 🌐 **Multi-Language Detection**: Pre-configured with localized "Skip" variants across 16+ languages (English, German, French, Spanish, Japanese, Chinese, Arabic, Hindi, etc.).
-- 🔄 **SPA Navigation Resilient**: Hooks into `yt-navigate-finish` to keep hotkey listeners and observers intact during long uninterrupted viewing sessions.
-- 🎛️ **Modern Options Hub**: Dark-themed options panel equipped with an interactive live hotkey recorder, modifier key combinations (Ctrl/Alt/Shift/Cmd), and YouTube shortcut conflict warnings.
-- 🔔 **Subtle Shadow DOM Toast**: Optional non-intrusive on-screen notification confirming skips without interfering with YouTube's stylesheet.
-- 🤖 **Optional Auto-Skip**: Opt-in background observer mode to automatically click the Skip button as soon as the countdown completes.
+### Core Skip Engine
+- ⌨️ **Single Hotkey Skip** — Tap your configured key (default: `.`) to instantly trigger YouTube's Skip button without moving the mouse.
+- 🤖 **Optional Auto-Skip** — Opt-in background observer mode that automatically clicks the Skip button the moment the countdown ends — no keypress needed.
+- 🔄 **Configurable Hotkey** — Change to any key or key combination (e.g., `Shift+S`, `X`, `Ctrl+.`) from the options page. Changes apply instantly across all YouTube tabs — no reload needed.
+
+### Self-Healing Detection
+- 🧠 **4-Layer Adaptive Detection Engine** — Uses learned selectors, known CSS selectors, multilingual text matching, and weighted heuristic scoring. If YouTube obfuscates or renames class names, Ski Extension identifies the button by text content, element type, position, and DOM context, then **learns and caches** the new selector automatically.
+- 🌐 **30+ Language Detection** — Pre-configured with localized "Skip" strings across 30+ languages: English, German, French, Spanish, Portuguese, Italian, Dutch, Swedish, Finnish, Norwegian, Danish, Polish, Czech, Romanian, Hungarian, Greek, Russian, Ukrainian, Turkish, Arabic, Hebrew, Hindi, Thai, Vietnamese, Indonesian, Malay, Japanese, Korean, Chinese (Simplified & Traditional), Bengali, Tamil, and Swahili.
+- 🛡️ **4-Strategy Ad Detection** — Detects ads via known class names, broader player selectors, visible ad overlay containers, and regex pattern matching on player classes. Survives YouTube renaming the `ad-showing` class.
+- 🔁 **5-Layer Click Engine** — Direct button click → ancestor container click → shotgun all skip elements → main-world API dispatch → video seek fallback. Retries automatically until the ad is gone.
+
+### Smart UI & UX
+- 🛡️ **Typing-Context Guard** — Smart inspection ignores keypresses while you're typing in YouTube comments, search bars, textareas, inputs, or `contenteditable` elements. Also ignores IME composition.
+- 🔄 **SPA Navigation Resilient** — Hooks into `yt-navigate-finish` to keep hotkey listeners and observers intact during long uninterrupted viewing sessions. Auto-skip re-attaches automatically with retry logic.
+- 🎛️ **Modern Options Hub** — Dark-themed options panel with an interactive live hotkey recorder, modifier key combinations (Ctrl/Alt/Shift/Cmd), and YouTube shortcut conflict warnings.
+- 🔔 **Subtle Shadow DOM Toast** — Optional non-intrusive on-screen notification confirming skips. Rendered inside a shadow root to avoid YouTube CSS conflicts. Waits until the ad is actually gone before showing.
+
+### Stats & Activity
+- 📊 **Stats Dashboard** — Track total ads skipped, estimated time saved, today/this week counters, and auto vs manual breakdown with a visual ratio bar.
+- 📋 **Activity Log (Opt-in)** — Optionally record which videos had ads when you skipped, with timestamps and skip method. Data stays on your device — never sent anywhere. Clear history with one click.
+- ⏱️ **Time Saved Estimate** — See how much time you've saved (~15s per skipped ad), formatted as hours and minutes.
 
 ---
 
@@ -63,35 +77,64 @@ YouTube regularly rolls out A/B tests and updates that rename player classes (`.
 
 ```mermaid
 flowchart TD
-    Start["Hotkey Pressed / DOM Mutation"] --> AdCheck{"Is Player in Ad State?<br/>(ad-showing check)"}
+    Start["Hotkey Pressed / Auto-Skip Trigger"] --> AdCheck{"Is Player in Ad State?<br/>(4-strategy ad detection)"}
     AdCheck -- No --> Exit["Do nothing (Return)"]
-    AdCheck -- Yes --> L1["Layer 1: Learned Selectors Cache<br/>(Cached from previous runtime discoveries)"]
+    AdCheck -- Yes --> L1["Layer 1: Learned Selectors Cache<br/>(Validated against skip text)"]
     
-    L1 -- Found --> Click["Dispatch Click + Learn ✅"]
-    L1 -- Not Found --> L2["Layer 2: Standard Known Selectors<br/>(.ytp-skip-ad-button, modern variants)"]
+    L1 -- Found --> Click["5-Layer Click Engine ✅"]
+    L1 -- Not Found --> L2["Layer 2: Known CSS Selectors<br/>(15 selectors, newest first)"]
     
     L2 -- Found --> Click
-    L2 -- Not Found --> L3["Layer 3: Structural & Multilingual Text Match<br/>(16+ Language Strings & Aria Patterns)"]
+    L2 -- Not Found --> L3["Layer 3: Structural & Multilingual Text Match<br/>(button + role=button + links in 30+ languages)"]
     
-    L3 -- Found --> Learn["Save Selector to Cache"] --> Click
-    L3 -- Not Found --> L4["Layer 4: Heuristic Scoring Engine<br/>(Evaluates ALL buttons in player)"]
+    L3 -- Found --> Learn["Learn Individual Classes → Cache"] --> Click
+    L3 -- Not Found --> L4["Layer 4: Heuristic Scoring Engine<br/>(8 weighted signals on ALL interactive elements)"]
     
-    L4 -- Score >= 0.55 --> Learn
-    L4 -- Score < 0.55 --> Fallback["Fail silently / Log throttled diagnostic"]
+    L4 -- "Score ≥ 0.55" --> Learn
+    L4 -- "Score < 0.55" --> Fallback["Log diagnostic (ad may be unskippable)"]
 ```
 
-### Heuristic Scoring Metric
+### Heuristic Scoring Signals
 
-When known classes fail, the engine inspects all candidate buttons in the player tree across 6 weighted signals:
+When known classes fail, the engine inspects all candidate interactive elements (`<button>`, `[role="button"]`, `<a>`, `[tabindex]`) in the player and scores them across 8 weighted signals:
 
 | Signal | Weight | Logic |
 | :--- | :---: | :--- |
-| **Class Hint** | `25%` | Checks class ancestry for `skip` or `ad` substrings |
-| **Spatial Position** | `20%` | Verifies bottom-right quadrant positioning in player bounds |
-| **Ad Ancestry** | `20%` | Inspects parent tree for ad overlay containers and module slots |
-| **Action Text Length** | `15%` | Favors compact, concise text labels ($\le 20$ chars) |
-| **Fuzzy Semantic Match** | `10%` | Regex matching against global translations and skip stems |
-| **Aria / Title Attributes** | `10%` | Evaluates accessibility descriptors |
+| **Skip Text Match** | `30%` | Exact or fuzzy match against 30+ language translations of "Skip" — the dominant signal |
+| **Spatial Position** | `15%` | Verifies bottom-right quadrant positioning in player bounds |
+| **Ad Ancestry** | `13%` | Inspects parent tree (8 levels) for ad overlay containers and module slots |
+| **Class Hint** | `12%` | Checks class ancestry for `skip` or `ad` substrings |
+| **Element Type** | `10%` | `<button>` and `role="button"` score higher than `<a>` or generic elements |
+| **Text Length** | `10%` | Favors compact, action-like text labels (≤ 20 chars) |
+| **Aria / Title Label** | `5%` | Bonus for having an accessibility descriptor |
+| **Element Size** | `5%` | Skip buttons have a reasonable clickable area (1,000–20,000 px²) |
+
+> [!IMPORTANT]
+> **Nuclear obfuscation test:** Even with ALL class names fully randomized, no aria-label, and no recognizable patterns anywhere in the DOM hierarchy, the heuristic scores **0.69** (above the 0.55 threshold) — finding the skip button purely by text content and element type.
+
+### Selector Learning
+
+When the heuristic or text match discovers a skip button, the extension **learns individual distinctive classes** (not the full class list) and persists them to `chrome.storage.local`. This means:
+- If YouTube adds or removes one class on the skip button, the other learned classes still match.
+- Learned selectors are tried first on subsequent pages (Layer 1), making detection near-instant.
+- Up to 10 selectors are cached, oldest pruned first.
+
+---
+
+## 📊 Stats Dashboard
+
+The options page includes a rich stats dashboard that updates in real time:
+
+| Metric | Description |
+| :--- | :--- |
+| **Ads Skipped** | Total lifetime count of successfully skipped ads |
+| **Time Saved** | Estimated time saved (~15 seconds per ad), formatted as hours and minutes |
+| **Today / This Week** | Rolling counters for daily and 7-day skip activity |
+| **Manual vs Auto** | Breakdown of hotkey-triggered vs auto-skip-triggered skips, with visual ratio bar |
+| **Activity Log** | Opt-in recent history showing video title, skip method, and time ago (last 50 entries) |
+
+> [!NOTE]
+> The Activity Log is **off by default**. Enable "Track recent activity" in options to start recording. All data stays on your device and can be cleared with one click.
 
 ---
 
@@ -132,6 +175,21 @@ When known classes fail, the engine inspects all candidate buttons in the player
 - Right-click the Ski Extension icon in your browser toolbar and choose **Options** (or open the extensions page).
 - Click **Change** in the Hotkey recorder and press your desired key or combination (e.g., `Shift + S`, `X`, `Ctrl + .`).
 - The recorder will alert you if your chosen key clashes with YouTube default shortcuts (like `K` for pause, `J`/`L` for seek, or `F` for fullscreen).
+- Changes take effect immediately — no page reload needed.
+- Click **Reset to default** to restore the Period (`.`) key.
+
+### Auto-Skip Mode
+- Toggle **Auto-skip ads** in the options page to enable automatic skipping.
+- When enabled, Ski Extension watches for ads via a MutationObserver on the player's class attribute (efficient — no subtree watching).
+- When an ad is detected, it polls for the skip button every 300ms and clicks it the moment it becomes available.
+- Stops polling after 30 seconds for unskippable ads to avoid unnecessary CPU usage.
+
+### Activity Log
+- Toggle **Track recent activity** in the options page.
+- When enabled, records the video title, skip method (manual/auto), and timestamp for each skip.
+- Data is stored locally on your device — never transmitted anywhere.
+- Shows up to 20 recent entries with relative timestamps ("3h ago", "yesterday").
+- Use **Clear history** to wipe all activity data.
 
 ---
 
@@ -142,27 +200,41 @@ ski/
 ├── entrypoints/
 │   ├── content.ts              # Content script entry point (DOM capture listener)
 │   └── options/                # Options interface (HTML + TypeScript + CSS)
-│       ├── index.html
-│       ├── main.ts
-│       └── style.css
+│       ├── index.html          # Stats dashboard, hotkey recorder, toggles
+│       ├── main.ts             # Settings persistence, stats rendering, activity log
+│       └── style.css           # Dark theme with stat cards, breakdown bars
 ├── src/
 │   ├── content/
-│   │   ├── selectors.ts        # Known class patterns & multi-language lookup
-│   │   ├── detector.ts         # 4-layer self-healing detection & click pipeline
+│   │   ├── selectors.ts        # 15 CSS selectors, 30+ language strings, aria patterns
+│   │   ├── detector.ts         # 4-layer detection, 8-signal heuristic, 5-layer click engine
 │   │   ├── hotkey.ts           # Keyboard event evaluator & typing guard
 │   │   ├── observer.ts         # SPA route listener & auto-skip mutation observer
 │   │   └── toast.ts            # Non-intrusive shadow DOM confirmation toast
 │   └── shared/
-│       ├── settings.ts         # Typed schema, sync storage manager, validators
+│       ├── settings.ts         # Settings schema, stats tracking, validators, formatters
 │       └── keycombo.ts         # Hotkey serializer, parser, & code mapper
+├── public/
+│   ├── ski-main.js             # Main-world helper (YouTube API access, multilingual text match)
+│   └── icon/                   # Extension branding icons (16, 32, 48, 96, 128px)
 ├── tests/
 │   ├── fixtures/
-│   │   └── player-states.ts    # Captured real YouTube DOM fixtures
-│   └── unit/                   # 43 automated unit & fixture tests
-├── public/icon/                # Extension branding icons (16, 32, 48, 96, 128px)
+│   │   └── player-states.ts    # 12 DOM fixtures including nuclear obfuscation tests
+│   └── unit/                   # 75 automated unit & fixture tests
 ├── wxt.config.ts               # WXT cross-browser framework configuration
+├── vitest.config.ts            # Test runner configuration
 └── package.json
 ```
+
+### Module Responsibilities
+
+| Module | Lines | Responsibility |
+| :--- | :---: | :--- |
+| `detector.ts` | ~670 | Core detection engine: `isAdShowing()`, `findSkipButton()`, `discoverSkipButton()`, `clickSkipButton()`, selector learning, heuristic scoring |
+| `selectors.ts` | ~177 | All CSS selectors, 30+ language skip strings, aria-label patterns, ad container selectors |
+| `observer.ts` | ~163 | Auto-skip MutationObserver (class-attribute only), SPA navigation hooks, polling loop |
+| `settings.ts` | ~290 | Settings & stats types, `recordSkip()`, `loadStats()`, formatters, validators |
+| `content.ts` | ~125 | Wiring: loads settings, attaches keydown handler, manages auto-skip lifecycle, video title capture |
+| `ski-main.js` | ~90 | Main-world helper: clicks buttons from YouTube's JS context, multilingual fallback, YouTube API, video seek |
 
 ---
 
@@ -173,6 +245,8 @@ Ski Extension follows strict privacy-first guidelines:
 - **No Remote Code**: Complies with Chrome MV3 security policies. All logic ships within the verified build package.
 - **Minimal Permissions**: Demands only `storage` for user settings and host permissions for `*://www.youtube.com/*` & `*://www.youtube-nocookie.com/*`.
 - **Zero Analytics or Tracking**: No Google Analytics, no telemetry, no cookies, no Sentry, and no phone-home servers.
+- **Local-Only Stats**: Skip counts and activity logs are stored exclusively in `chrome.storage.local` on your device. Never transmitted.
+- **Opt-In Activity Log**: Video title recording is off by default. When enabled, data stays local and can be cleared with one click.
 - **Audit-Ready**: 100% open source under the MIT License. Read [PRIVACY.md](PRIVACY.md) for full disclosure.
 
 ---
@@ -189,13 +263,24 @@ Ski Extension follows strict privacy-first guidelines:
 | :--- | :--- |
 | `pnpm dev` | Starts dev server with live hot-reloading in Chrome |
 | `pnpm dev:firefox` | Starts dev server targeting Firefox |
-| `pnpm test` | Runs complete Vitest test suite (43+ unit & fixture tests) |
+| `pnpm test` | Runs complete Vitest test suite (75 unit & fixture tests) |
 | `pnpm test:watch` | Runs Vitest in interactive watch mode |
+| `pnpm test:coverage` | Runs tests with V8 code coverage report |
 | `pnpm compile` | Runs TypeScript type checker (`tsc --noEmit`) |
 | `pnpm build` | Compiles optimized Chrome MV3 bundle into `.output/chrome-mv3` |
 | `pnpm build:firefox` | Compiles Firefox MV2 bundle into `.output/firefox-mv2` |
 | `pnpm zip` | Packages production distribution archive for Chrome Web Store |
 | `pnpm zip:firefox` | Packages distribution zip + source zip for Firefox AMO |
+
+### Test Coverage
+
+| Test File | Tests | Coverage |
+| :--- | :---: | :--- |
+| `detector.test.ts` | 34 | Detection layers, heuristic scoring, nuclear obfuscation, multilingual, role=button, click engine |
+| `settings.test.ts` | 17 | Validation, conflict detection, time formatting, daily/weekly counters |
+| `keycombo.test.ts` | 14 | Serialization, parsing, formatting, round-trips, modifier matching |
+| `hotkey.test.ts` | 10 | Key matching, typing guard, repeat suppression, modifier combos |
+| **Total** | **75** | |
 
 ---
 
