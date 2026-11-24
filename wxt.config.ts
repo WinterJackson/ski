@@ -27,10 +27,10 @@ export default defineConfig({
       gecko: {
         id: 'ski-extension@winterjackson.dev',
         strict_min_version: '109.0',
+        data_collection_permissions: {
+          required: ['none'],
+        },
       },
     },
-  },
-  suppressWarnings: {
-    firefoxDataCollection: true,
   },
 });
