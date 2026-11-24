@@ -90,6 +90,7 @@ export default defineContentScript({
     let consecutiveAdTimer: ReturnType<typeof setInterval> | null = null;
 
     function watchForConsecutiveAd(method: 'manual' | 'auto'): void {
+      if (!settings.enabled) return;
       if (consecutiveAdTimer) clearInterval(consecutiveAdTimer);
       let attempts = 0;
       consecutiveAdTimer = setInterval(() => {
@@ -147,6 +148,7 @@ export default defineContentScript({
     // --- Keydown handler (capture phase) ---
     // Always active — works on desktop AND when a keyboard is attached to a mobile device
     function onKeyDown(event: KeyboardEvent): void {
+      if (!settings.enabled) return;
       if (!shouldTriggerSkip(event, settings)) return;
 
       const button = findSkipButton();
@@ -162,17 +164,19 @@ export default defineContentScript({
     document.addEventListener('keydown', onKeyDown, { capture: true });
 
     // --- Auto-skip ---
-    if (settings.autoSkip) {
+    if (settings.enabled && settings.autoSkip) {
       startAutoSkip(() => onSkipSuccess('auto'));
     }
 
     // --- SPA navigation: re-initialize when YouTube navigates ---
     onYouTubeNavigate(() => {
       // Auto-skip needs to re-attach to the new player
-      if (settings.autoSkip) {
+      if (settings.enabled && settings.autoSkip) {
         stopAutoSkip();
         // The new startAutoSkip retries internally if player isn't ready yet
         startAutoSkip(() => onSkipSuccess('auto'));
+      } else {
+        stopAutoSkip();
       }
     });
 
@@ -190,9 +194,9 @@ export default defineContentScript({
       // Merge changes into current settings
       settings = { ...settings, ...updated };
 
-      // Handle auto-skip toggle
-      if ('autoSkip' in updated) {
-        if (settings.autoSkip) {
+      // Handle enabled and auto-skip toggle
+      if ('enabled' in updated || 'autoSkip' in updated) {
+        if (settings.enabled && settings.autoSkip) {
           startAutoSkip(() => onSkipSuccess('auto'));
         } else {
           stopAutoSkip();

@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════
    Ski Extension — Popup Styles
-   Compact toolbar popup with auto-skip toggle and glanceable stats.
+   Compact toolbar popup with Master On/Off switch, 20px rounded card,
+   auto-skip toggle, and glanceable stats.
    ══════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -13,7 +14,7 @@
   --accent: #3ea6ff;
   --accent-hover: #65b8ff;
   --success: #34c759;
-  --radius: 12px;
+  --radius: 14px;
 }
 
 :root[data-theme="dark"] {
@@ -35,13 +36,16 @@
 }
 
 html {
-  /* Rounded popup window — clips all content to 20px corners */
+  /* Rounded popup window frame */
   border-radius: 20px;
   overflow: hidden;
+  background: var(--bg);
 }
 
 body {
   width: 320px;
+  margin: 0;
+  padding: 0;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
@@ -49,10 +53,19 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
-.popup {
+/* ── Outer Card (20px Rounded Frame) ─────────────────────────────────── */
+
+.popup-card {
   padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-sizing: border-box;
+  transition: opacity 0.2s ease;
 }
 
 /* ── Header ────────────────────────────────────────────────────────── */
@@ -61,7 +74,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .header-left {
@@ -91,7 +104,7 @@ h1 {
   padding: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, transform 0.1s;
@@ -106,14 +119,105 @@ h1 {
   transform: scale(0.93);
 }
 
-/* ── Toggle Section ────────────────────────────────────────────────── */
+/* ── Master Power Card (ON / OFF) ───────────────────────────────────── */
 
-.toggle-section {
+.power-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+}
+
+.power-card.is-active {
+  border-color: rgba(48, 209, 88, 0.45);
+  box-shadow: 0 0 16px rgba(48, 209, 88, 0.1);
+}
+
+.power-card.is-paused {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.power-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.power-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #8e8e93;
+  flex-shrink: 0;
+  transition: background 0.25s, box-shadow 0.25s;
+}
+
+.power-card.is-active .status-indicator {
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(48, 209, 88, 0.6);
+  animation: pulseGlow 2.5s infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(48, 209, 88, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(48, 209, 88, 0.85);
+  }
+}
+
+.status-texts {
+  display: flex;
+  flex-direction: column;
+}
+
+.power-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--text);
+}
+
+.power-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.power-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  line-height: 1.4;
+}
+
+/* ── Sub Settings Section ───────────────────────────────────────────── */
+
+.sub-section {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  transition: opacity 0.25s, filter 0.25s;
+}
+
+.sub-section.disabled,
+.stats-row.disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .toggle-row {
@@ -122,16 +226,20 @@ h1 {
   align-items: center;
 }
 
-.toggle-label {
-  font-size: 15px;
-  font-weight: 600;
+.toggle-info {
+  display: flex;
+  flex-direction: column;
 }
 
-.toggle-hint {
-  font-size: 12px;
+.toggle-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.toggle-sublabel {
+  font-size: 11px;
   color: var(--text-muted);
-  margin-top: 8px;
-  line-height: 1.4;
 }
 
 /* ── Toggle Switch ─────────────────────────────────────────────────── */
@@ -139,7 +247,7 @@ h1 {
 .switch {
   position: relative;
   display: inline-block;
-  width: 50px;
+  width: 48px;
   height: 28px;
   flex-shrink: 0;
 }
@@ -170,15 +278,19 @@ h1 {
   background: white;
   border-radius: 50%;
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .switch input:checked + .slider {
-  background: var(--accent);
+  background: var(--success);
+}
+
+.master-switch input:checked + .slider {
+  background: var(--success);
 }
 
 .switch input:checked + .slider::before {
-  transform: translateX(22px);
+  transform: translateX(20px);
 }
 
 .switch input:focus-visible + .slider {
@@ -210,7 +322,8 @@ kbd {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 8px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+  transition: opacity 0.25s;
 }
 
 .stat {
@@ -220,7 +333,7 @@ kbd {
 
 .stat-value {
   display: block;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.3px;
@@ -246,7 +359,7 @@ kbd {
 
 .stat-divider {
   width: 1px;
-  height: 28px;
+  height: 26px;
   background: var(--border);
   flex-shrink: 0;
 }
@@ -257,7 +370,7 @@ footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
@@ -284,6 +397,6 @@ footer a:hover {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
+    animation: none !important;
   }
 }
-

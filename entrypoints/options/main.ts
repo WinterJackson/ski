@@ -26,6 +26,7 @@ const hotkeyInput = document.getElementById('hotkey-input') as HTMLInputElement;
 const recordBtn = document.getElementById('record-btn') as HTMLButtonElement;
 const resetBtn = document.getElementById('reset-hotkey') as HTMLButtonElement;
 const conflictWarning = document.getElementById('conflict-warning') as HTMLElement;
+const extensionEnabledCheckbox = document.getElementById('extension-enabled') as HTMLInputElement;
 const showToastCheckbox = document.getElementById('show-toast') as HTMLInputElement;
 const autoSkipCheckbox = document.getElementById('auto-skip') as HTMLInputElement;
 const trackHistoryCheckbox = document.getElementById('track-history') as HTMLInputElement;
@@ -193,6 +194,7 @@ function updateUI(): void {
     metaKey: currentSettings.metaKey,
   });
 
+  extensionEnabledCheckbox.checked = currentSettings.enabled;
   showToastCheckbox.checked = currentSettings.showToast;
   autoSkipCheckbox.checked = currentSettings.autoSkip;
   trackHistoryCheckbox.checked = currentSettings.trackHistory;
@@ -374,6 +376,12 @@ resetBtn.addEventListener('click', async () => {
 });
 
 // ── Toggle Listeners ─────────────────────────────────────────────────
+
+extensionEnabledCheckbox.addEventListener('change', async () => {
+  currentSettings.enabled = extensionEnabledCheckbox.checked;
+  await saveSettings({ enabled: currentSettings.enabled });
+  showSaveConfirm(extensionEnabledCheckbox);
+});
 
 showToastCheckbox.addEventListener('change', async () => {
   currentSettings.showToast = showToastCheckbox.checked;

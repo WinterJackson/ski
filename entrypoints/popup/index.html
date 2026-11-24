@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <div class="popup">
+  <div class="popup-card" id="popup-card">
     <header>
       <div class="header-left">
         <span class="logo">⏭</span>
@@ -28,18 +28,40 @@
       </button>
     </header>
 
-    <div class="toggle-section">
-      <div class="toggle-row">
-        <span class="toggle-label">Auto-Skip</span>
-        <label class="switch" for="auto-skip-toggle">
-          <input type="checkbox" id="auto-skip-toggle">
+    <!-- Master Power Card (ON / OFF) -->
+    <div class="power-card" id="power-card">
+      <div class="power-header">
+        <div class="power-status">
+          <span class="status-indicator" id="status-indicator"></span>
+          <div class="status-texts">
+            <span class="power-title" id="power-title">Ski is Active</span>
+            <span class="power-subtitle" id="power-subtitle">Ready to skip ads</span>
+          </div>
+        </div>
+        <label class="switch master-switch" for="master-toggle" aria-label="Toggle Ski Extension On or Off">
+          <input type="checkbox" id="master-toggle" checked />
           <span class="slider"></span>
         </label>
       </div>
-      <p class="toggle-hint" id="toggle-hint">Hotkey mode — press <kbd id="hotkey-display">Tab</kbd> to skip</p>
+      <p class="power-hint" id="power-hint">Press <kbd id="hotkey-display">Tab</kbd> during an ad to skip it</p>
     </div>
 
-    <div class="stats-row">
+    <!-- Secondary Settings: Auto-Skip -->
+    <div class="sub-section" id="sub-section">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-label">Auto-Skip Ads</span>
+          <span class="toggle-sublabel">Skip without keypress</span>
+        </div>
+        <label class="switch" for="auto-skip-toggle" aria-label="Toggle Auto-Skip">
+          <input type="checkbox" id="auto-skip-toggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row" id="stats-row">
       <div class="stat">
         <span class="stat-value stat-accent" id="skip-count">0</span>
         <span class="stat-label">skipped</span>
@@ -65,4 +87,3 @@
   <script type="module" src="./main.ts"></script>
 </body>
 </html>
-

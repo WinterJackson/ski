@@ -31,8 +31,14 @@ describe('validateSettings', () => {
     expect(result.ctrlKey).toBe(true);
     expect(result.showToast).toBe(false);
     // Defaults for unspecified
+    expect(result.enabled).toBe(true);
     expect(result.altKey).toBe(false);
     expect(result.autoSkip).toBe(false);
+  });
+
+  it('preserves enabled: false when toggled off', () => {
+    const result = validateSettings({ enabled: false });
+    expect(result.enabled).toBe(false);
   });
 
   it('rejects invalid types and falls back to defaults', () => {

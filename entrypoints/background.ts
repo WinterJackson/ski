@@ -33,8 +33,11 @@ export default defineBackground(() => {
     if (!api) return;
 
     try {
-      const result = await browser.storage.sync.get({ autoSkip: false });
-      if (result.autoSkip) {
+      const result = await browser.storage.sync.get({ enabled: true, autoSkip: false });
+      if (!result.enabled) {
+        await api.setBadgeText({ text: 'OFF' });
+        await api.setBadgeBackgroundColor({ color: '#8e8e93' });
+      } else if (result.autoSkip) {
         await api.setBadgeText({ text: 'ON' });
         await api.setBadgeBackgroundColor({ color: '#30d158' });
       } else {
@@ -50,7 +53,7 @@ export default defineBackground(() => {
 
   // Update badge when settings change
   browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'sync' && 'autoSkip' in changes) {
+    if (areaName === 'sync' && ('enabled' in changes || 'autoSkip' in changes)) {
       updateBadge();
     }
   });

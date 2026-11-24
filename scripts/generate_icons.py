@@ -131,3 +131,4 @@ for s in sizes:
     print(f"Generated {s}x{s} icon -> {path}")
 
 print("All PNG icons generated successfully!")
+

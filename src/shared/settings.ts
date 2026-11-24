@@ -6,6 +6,8 @@
 
 export interface SkiSettings {
   [key: string]: unknown;
+  /** Master switch — whether the extension is enabled or paused */
+  enabled: boolean;
   /** The key code (event.code) that triggers the skip */
   keyCode: string;
   /** Whether Ctrl must be held */
@@ -74,6 +76,7 @@ const DAILY_SKIPS_RETENTION_DAYS = 90;
 
 /** Default settings — Tab key (not a YouTube shortcut, no conflicts) */
 export const DEFAULT_SETTINGS: SkiSettings = {
+  enabled: true,
   keyCode: 'Tab',
   ctrlKey: false,
   altKey: false,
@@ -124,6 +127,7 @@ export function hasYouTubeConflict(settings: SkiSettings): boolean {
 /** Validate that settings have sane values */
 export function validateSettings(settings: Partial<SkiSettings>): SkiSettings {
   return {
+    enabled: typeof settings.enabled === 'boolean' ? settings.enabled : DEFAULT_SETTINGS.enabled,
     keyCode: typeof settings.keyCode === 'string' && settings.keyCode.length > 0
       ? settings.keyCode
       : DEFAULT_SETTINGS.keyCode,
