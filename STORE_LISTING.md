@@ -53,7 +53,7 @@ Unlike traditional ad blockers that break playback, trigger YouTube's "Ad blocke
 YouTube actively detects and blocks standard network-level ad blockers. Ski Extension is fundamentally different: it does NOT intercept network requests or modify video streams. It simply automates the user action of clicking YouTube's official Skip button. It's clean, safe, and will never trigger ad-blocker warnings.
 
 ---
-Built with ❤️ by Winter Jackson.
+Built with ❤️ by [Winter Jackson](https://github.com/WinterJackson), under Xinteck Digital Solutions.
 Source code & contributions: https://github.com/WinterJackson/ski
 ```
 

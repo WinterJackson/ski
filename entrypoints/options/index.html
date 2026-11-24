@@ -4,14 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ski Extension Options</title>
-  <script>
-    // Anti-FOUC: apply saved theme before CSS paints
-    (function() {
-      var t = localStorage.getItem('ski-theme') || 'system';
-      if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', t);
-    })();
-  </script>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -176,8 +168,7 @@
       <p>
         <strong>Ski Extension</strong> v<span id="version">1.0.0</span> ·
         <a href="https://github.com/WinterJackson/ski" target="_blank" rel="noopener">GitHub</a> ·
-        Built by <a href="https://github.com/WinterJackson" target="_blank" rel="noopener">Winter Jackson</a>,
-        available for hire.
+        Built by <a href="https://github.com/WinterJackson" target="_blank" rel="noopener">Winter Jackson</a>, under Xinteck Digital Solutions.
       </p>
     </footer>
   </main>

@@ -26,7 +26,7 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         id: 'ski-extension@winterjackson.dev',
-        strict_min_version: '109.0',
+        strict_min_version: '142.0',
         data_collection_permissions: {
           required: ['none'],
         },

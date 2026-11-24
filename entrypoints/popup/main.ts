@@ -35,6 +35,13 @@ const fullSettingsLink = document.getElementById('full-settings') as HTMLElement
 
 let cachedSettings: SkiSettings;
 
+// ── Immediate Theme Initialization ────────────────────────────────────
+(function initTheme(): void {
+  const t = localStorage.getItem('ski-theme') || 'system';
+  const resolved = t === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
+  document.documentElement.setAttribute('data-theme', resolved);
+})();
+
 // ── Initialize ───────────────────────────────────────────────────────
 
 async function init(): Promise<void> {

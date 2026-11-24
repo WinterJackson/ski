@@ -326,4 +326,4 @@ When YouTube pushes an interface update that evades detection, help us patch it 
 ## 📄 License
 
 Licensed under the [MIT License](LICENSE).  
-Crafted with precision by **[Winter Jackson](https://github.com/WinterJackson)** — Available for software engineering & freelance projects.
+Crafted with precision by **[Winter Jackson](https://github.com/WinterJackson)**, under Xinteck Digital Solutions.

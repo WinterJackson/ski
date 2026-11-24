@@ -21,6 +21,6 @@
 - **Firefox Desktop & Android:** Download `ski-1.0.0-firefox.zip` or install from Firefox Add-ons.
 - **Source Code:** Download `ski-1.0.0-sources.zip` for building from source.
 
-### 📜 License
-MIT License © 2026 Winter Jackson
+### 📜 License & Attribution
+MIT License © 2026 [Winter Jackson](https://github.com/WinterJackson), under Xinteck Digital Solutions.
 
