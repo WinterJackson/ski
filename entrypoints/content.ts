@@ -15,7 +15,7 @@
 import { findSkipButton, clickSkipButton, isAdShowing, loadLearnedSelectors } from '../src/content/detector';
 import { shouldTriggerSkip } from '../src/content/hotkey';
 import { onYouTubeNavigate, startAutoSkip, stopAutoSkip } from '../src/content/observer';
-import { showToast } from '../src/content/toast';
+import { showToast, hideToast } from '../src/content/toast';
 import {
   loadSettings,
   saveSettings,
@@ -117,23 +117,70 @@ export default defineContentScript({
       }, 500);
     }
 
+    // ── Single Toast Lifecycle Controller ──
+    // Ensures toast appears ONCE as "Skipping", stays steady without blinking
+    // through consecutive ads, and only disappears after ALL ads are skipped.
+    let toastActive = false;
+    let toastWatchTimer: ReturnType<typeof setInterval> | null = null;
+
+    function handleToast(method: 'manual' | 'auto'): void {
+      if (!settings.showToast) return;
+
+      // 1. Immediately show "Skipping" once without blinking or restarting
+      if (!toastActive) {
+        toastActive = true;
+        const skippingMsg = method === 'auto' ? 'Skipping ⚡' : 'Skipping ⏭';
+        try {
+          showToast(skippingMsg, false); // autoDismiss: false, stays solid without blinking
+        } catch { /* non-critical */ }
+      }
+
+      // 2. If a watch loop is already running, keep it running
+      if (toastWatchTimer) return;
+
+      let consecutiveCleanChecks = 0;
+      let totalChecks = 0;
+      const MAX_CHECKS = 60; // 60 * 250ms = 15 seconds max safety timeout
+
+      toastWatchTimer = setInterval(() => {
+        totalChecks++;
+
+        if (isAdShowing()) {
+          // Ad is still showing (or Ad 2 of 2 has appeared) — reset clean count
+          consecutiveCleanChecks = 0;
+        } else {
+          // Ad is not currently showing
+          consecutiveCleanChecks++;
+          // Wait for 3 consecutive clean checks (750ms) to ensure double ads didn't just have a brief transition gap
+          if (consecutiveCleanChecks >= 3) {
+            clearInterval(toastWatchTimer!);
+            toastWatchTimer = null;
+            toastActive = false;
+
+            // All ads are completely gone! Show the completion toast once.
+            const doneMsg = method === 'auto' ? 'Ad auto-skipped ⚡' : 'Ad skipped ⏭';
+            try {
+              showToast(doneMsg, true); // autoDismiss: true (auto-hides after 2000ms)
+            } catch { /* non-critical */ }
+            return;
+          }
+        }
+
+        // Safety timeout: dismiss smoothly if ad is stubborn/unskippable
+        if (totalChecks >= MAX_CHECKS) {
+          clearInterval(toastWatchTimer!);
+          toastWatchTimer = null;
+          toastActive = false;
+          try {
+            hideToast();
+          } catch { /* non-critical */ }
+        }
+      }, 250);
+    }
+
     // ── Shared skip feedback handler ──
     function onSkipSuccess(method: 'manual' | 'auto'): void {
-      if (settings.showToast) {
-        // Wait until ad is actually gone before showing toast
-        let checks = 0;
-        const checkInterval = setInterval(() => {
-          checks++;
-          if (!isAdShowing()) {
-            clearInterval(checkInterval);
-            const msg = method === 'auto' ? 'Ad auto-skipped ⚡' : 'Ad skipped ⏭';
-            try { showToast(msg); } catch { /* non-critical */ }
-          } else if (checks > 20) {
-            clearInterval(checkInterval);
-            try { showToast('Attempting to skip...'); } catch { /* non-critical */ }
-          }
-        }, 200);
-      }
+      handleToast(method);
       recordSkip(method, getVideoTitle());
       console.debug(`[Ski] Ad skipped (${method})`);
       // Watch for a consecutive ad (Ad 2 of 2) after this skip.
@@ -170,6 +217,14 @@ export default defineContentScript({
 
     // --- SPA navigation: re-initialize when YouTube navigates ---
     onYouTubeNavigate(() => {
+      // Clean up any ongoing toast cycle
+      if (toastWatchTimer) {
+        clearInterval(toastWatchTimer);
+        toastWatchTimer = null;
+      }
+      toastActive = false;
+      try { hideToast(); } catch { /* non-critical */ }
+
       // Auto-skip needs to re-attach to the new player
       if (settings.enabled && settings.autoSkip) {
         stopAutoSkip();
