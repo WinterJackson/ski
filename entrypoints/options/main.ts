@@ -14,6 +14,7 @@ import {
   formatTimeSaved,
   getSkipsToday,
   getSkipsThisWeek,
+  validateSettings,
   DEFAULT_SETTINGS,
   type SkiSettings,
   type SkiStats,
@@ -51,6 +52,8 @@ const breakdownAutoEl = document.getElementById('breakdown-auto') as HTMLElement
 // Recent activity elements
 const recentActivitySection = document.getElementById('recent-activity-section') as HTMLElement;
 const recentListEl = document.getElementById('recent-list') as HTMLElement;
+const recentActionsEl = document.getElementById('recent-actions') as HTMLElement;
+const recentCountEl = document.getElementById('recent-count') as HTMLElement;
 const clearHistoryBtn = document.getElementById('clear-history') as HTMLButtonElement;
 
 // Welcome card elements
@@ -213,6 +216,10 @@ function updateUI(): void {
   autoSkipCheckbox.checked = currentSettings.autoSkip;
   trackHistoryCheckbox.checked = currentSettings.trackHistory;
 
+  // Dependent toggles are disabled when Ski itself is paused
+  autoSkipCheckbox.disabled = !currentSettings.enabled;
+  showToastCheckbox.disabled = !currentSettings.enabled;
+
   // Show conflict warning
   conflictWarning.hidden = !hasYouTubeConflict(currentSettings);
 
@@ -286,14 +293,19 @@ function renderRecentSkips(skips: RecentSkip[]): void {
   recentListEl.replaceChildren();
 
   if (!skips || skips.length === 0) {
+    recentActionsEl.hidden = true;
+    recentCountEl.textContent = '';
     const p = document.createElement('p');
-    p.className = 'hint';
+    p.className = 'hint recent-empty';
     p.textContent = 'No activity yet. Skip some ads!';
     recentListEl.appendChild(p);
     return;
   }
 
-  for (const skip of skips.slice(0, 20)) {
+  recentActionsEl.hidden = false;
+  recentCountEl.textContent = `${skips.length} ${skips.length === 1 ? 'entry' : 'entries'}`;
+
+  for (const skip of skips) {
     const time = formatTimeAgo(skip.timestamp);
     const icon = skip.method === 'auto' ? '⚡' : '⌨';
     const methodLabel = skip.method === 'auto' ? 'Auto' : 'Manual';
@@ -305,6 +317,7 @@ function renderRecentSkips(skips: RecentSkip[]): void {
     const iconSpan = document.createElement('span');
     iconSpan.className = 'recent-icon';
     iconSpan.textContent = icon;
+    iconSpan.setAttribute('aria-hidden', 'true');
 
     const infoDiv = document.createElement('div');
     infoDiv.className = 'recent-info';
@@ -312,10 +325,12 @@ function renderRecentSkips(skips: RecentSkip[]): void {
     const titleSpan = document.createElement('span');
     titleSpan.className = 'recent-title';
     titleSpan.textContent = title;
+    titleSpan.title = title;
 
     const metaSpan = document.createElement('span');
     metaSpan.className = 'recent-meta';
     metaSpan.textContent = `${methodLabel} · ${time}`;
+    metaSpan.title = new Date(skip.timestamp).toLocaleString();
 
     infoDiv.appendChild(titleSpan);
     infoDiv.appendChild(metaSpan);
@@ -426,6 +441,7 @@ resetBtn.addEventListener('click', async () => {
 
 extensionEnabledCheckbox.addEventListener('change', async () => {
   currentSettings.enabled = extensionEnabledCheckbox.checked;
+  updateUI();
   await saveSettings({ enabled: currentSettings.enabled });
   showSaveConfirm(extensionEnabledCheckbox);
 });
@@ -522,7 +538,7 @@ browser.storage.onChanged.addListener(async (changes, areaName) => {
         (updated as Record<string, unknown>)[key] = change.newValue;
       }
     }
-    currentSettings = { ...currentSettings, ...updated };
+    currentSettings = validateSettings({ ...currentSettings, ...updated });
     updateUI();
   }
 

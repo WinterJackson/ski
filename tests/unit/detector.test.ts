@@ -11,6 +11,7 @@ import {
   matchesSkipText,
   discoverSkipButton,
   clickSkipButton,
+  getPlayerElement,
 } from '../../src/content/detector';
 import {
   FIXTURE_SKIPPABLE_AD,
@@ -287,6 +288,77 @@ describe('detector with fixtures', () => {
       const el = document.createElement('button');
       el.style.display = 'block';
       document.body.appendChild(el);
+      expect(isVisible(el)).toBe(true);
+    });
+
+    it('returns false when an ancestor has display:none or visibility:hidden', () => {
+      const parent = document.createElement('div');
+      parent.style.display = 'none';
+      const el = document.createElement('button');
+      el.style.display = 'block';
+      parent.appendChild(el);
+      document.body.appendChild(parent);
+      expect(isVisible(el)).toBe(false);
+
+      parent.style.display = 'block';
+      parent.style.visibility = 'hidden';
+      expect(isVisible(el)).toBe(false);
+
+      parent.style.visibility = 'visible';
+      el.style.opacity = '0';
+      expect(isVisible(el)).toBe(false);
+    });
+
+    it('prefers #movie_player over an earlier .html5-video-player preview', () => {
+      const preview = document.createElement('div');
+      preview.id = 'inline-preview-player';
+      preview.className = 'html5-video-player';
+      const mainPlayer = document.createElement('div');
+      mainPlayer.id = 'movie_player';
+      mainPlayer.className = 'html5-video-player ad-showing';
+      document.body.appendChild(preview);
+      document.body.appendChild(mainPlayer);
+      expect(getPlayerElement()).toBe(mainPlayer);
+    });
+
+    it('ignores empty oval or countdown-only skip buttons', () => {
+      const player = document.createElement('div');
+      player.id = 'movie_player';
+      player.className = 'html5-video-player ad-showing';
+
+      const emptyBtn = document.createElement('button');
+      emptyBtn.className = 'ytp-skip-ad-button';
+      emptyBtn.style.display = 'block';
+      player.appendChild(emptyBtn);
+      document.body.appendChild(player);
+      expect(findSkipButton()).toBeNull();
+
+      emptyBtn.textContent = '5';
+      expect(findSkipButton()).toBeNull();
+
+      emptyBtn.textContent = 'Skip in 5';
+      expect(findSkipButton()).toBeNull();
+
+      emptyBtn.textContent = 'Skip';
+      expect(findSkipButton()).toBe(emptyBtn);
+    });
+
+    it('returns false when checkVisibility returns false or 0x0 in layout engine', () => {
+      const el = document.createElement('button') as HTMLButtonElement & {
+        checkVisibility?: () => boolean;
+      };
+      el.style.display = 'block';
+      el.checkVisibility = () => false;
+      document.body.appendChild(el);
+      expect(isVisible(el)).toBe(false);
+
+      // Even if checkVisibility returns true, 0x0 bounding rect in a real browser is hidden
+      el.checkVisibility = () => true;
+      el.getBoundingClientRect = () => ({ width: 0, height: 0 } as DOMRect);
+      expect(isVisible(el)).toBe(false);
+
+      // Non-zero bounding rect + checkVisibility=true is visible
+      el.getBoundingClientRect = () => ({ width: 80, height: 36, left: 0, top: 0 } as DOMRect);
       expect(isVisible(el)).toBe(true);
     });
   });

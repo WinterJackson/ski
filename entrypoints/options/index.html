@@ -171,10 +171,11 @@
         <span class="save-check" aria-hidden="true">✓</span>
       </div>
       <div id="recent-activity-section" hidden>
-        <div id="recent-list" class="recent-list">
-          <p class="hint">No activity yet. Skip some ads!</p>
+        <div id="recent-list" class="recent-list" role="region" aria-label="Recent skipped ads">
+          <p class="hint recent-empty">No activity yet. Skip some ads!</p>
         </div>
-        <div class="recent-actions">
+        <div class="recent-actions" id="recent-actions">
+          <span id="recent-count" class="recent-count"></span>
           <button id="clear-history" type="button" class="link-btn link-btn-danger">
             Clear history
           </button>

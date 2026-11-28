@@ -48,8 +48,11 @@ export default defineBackground(() => {
     }
   }
 
-  // Set initial badge state
+  // Set initial badge state and refresh on browser startup
   updateBadge();
+  browser.runtime.onStartup.addListener(() => {
+    updateBadge();
+  });
 
   // Update badge when settings change
   browser.storage.onChanged.addListener((changes, areaName) => {

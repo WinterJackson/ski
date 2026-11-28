@@ -27,7 +27,6 @@ export const SKIP_BUTTON_SELECTORS: readonly string[] = [
   '.ytp-ad-skip-button-container [role="button"]',
   // Mobile YouTube web player selectors
   '.skip-button',
-  '.mobile-topbar-header-sign-in-button + button',
   '.ad-skip-button',
   'button.skip-ad-button',
   // Attribute-based selector (works even if classes are obfuscated)

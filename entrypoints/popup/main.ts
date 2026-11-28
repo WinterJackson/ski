@@ -9,6 +9,7 @@ import {
   loadStats,
   formatTimeSaved,
   getSkipsToday,
+  DEFAULT_SETTINGS,
   type SkiSettings,
 } from '../../src/shared/settings';
 import { serializeKeyCombo } from '../../src/shared/keycombo';
@@ -33,7 +34,7 @@ const versionEl = document.getElementById('version') as HTMLElement;
 const openOptionsBtn = document.getElementById('open-options') as HTMLElement;
 const fullSettingsLink = document.getElementById('full-settings') as HTMLElement;
 
-let cachedSettings: SkiSettings;
+let cachedSettings: SkiSettings = { ...DEFAULT_SETTINGS };
 
 // ── Immediate Theme Initialization ────────────────────────────────────
 (function initTheme(): void {
@@ -88,6 +89,7 @@ function renderPowerState(settings: SkiSettings): void {
     powerTitle.textContent = 'Ski is Active';
     subSection.classList.remove('disabled');
     statsRow.classList.remove('disabled');
+    autoSkipToggle.disabled = false;
 
     if (isAutoSkip) {
       powerSubtitle.textContent = 'Auto-skipping ads';
@@ -112,6 +114,7 @@ function renderPowerState(settings: SkiSettings): void {
     powerHint.textContent = 'Ski is off. YouTube ads will play normally.';
     subSection.classList.add('disabled');
     statsRow.classList.add('disabled');
+    autoSkipToggle.disabled = true;
   }
 }
 
@@ -158,11 +161,11 @@ browser.storage.onChanged.addListener(async (changes, areaName) => {
 
   if (areaName === 'sync') {
     if ('enabled' in changes) {
-      cachedSettings.enabled = Boolean(changes.enabled.newValue);
+      cachedSettings.enabled = Boolean(changes.enabled.newValue ?? DEFAULT_SETTINGS.enabled);
       masterToggle.checked = cachedSettings.enabled;
     }
     if ('autoSkip' in changes) {
-      cachedSettings.autoSkip = Boolean(changes.autoSkip.newValue);
+      cachedSettings.autoSkip = Boolean(changes.autoSkip.newValue ?? DEFAULT_SETTINGS.autoSkip);
       autoSkipToggle.checked = cachedSettings.autoSkip;
     }
     if ('keyCode' in changes || 'ctrlKey' in changes || 'altKey' in changes || 'shiftKey' in changes || 'metaKey' in changes) {

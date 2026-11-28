@@ -1,14 +1,23 @@
 /**
- * Observer module — SPA navigation hooks and optional auto-skip observer.
+ * Observer module — SPA navigation hooks and unified auto-skip state machine.
  *
  * YouTube does not reload between videos, so we listen for yt-navigate-finish
- * to reset state. The optional auto-skip uses a polling approach scoped to
- * the player element: when the ad-showing class appears, it polls for the
- * skip button every 300ms until it finds and clicks it.
+ * to reset state. Auto-skip uses a two-tier MutationObserver:
+ * 1. Outer observer on the player element watching `class` changes.
+ * 2. Scoped inner observer on `.ytp-ad-module, .video-ads` (falling back to
+ *    player) watching attribute/subtree changes, debounced via requestAnimationFrame
+ *    for <16ms reaction time with zero idle polling.
  */
 
-import { PLAYER_SELECTOR, AD_SHOWING_CLASS } from './selectors';
-import { findSkipButton, clickSkipButton, isAdShowing } from './detector';
+import { AD_SHOWING_CLASS } from './selectors';
+import {
+  findSkipButton,
+  clickSkipButton,
+  isAdShowing,
+  isVisible,
+  getPlayerElement,
+  seekAdVideoIfStillShowing,
+} from './detector';
 
 /** Callback for when navigation occurs */
 export type NavigationCallback = () => void;
@@ -26,166 +35,269 @@ export function onYouTubeNavigate(callback: NavigationCallback): () => void {
   return () => document.removeEventListener('yt-navigate-finish', handler);
 }
 
-// ----- Auto-skip (opt-in) -----
+// ----- Auto-skip state machine (opt-in) -----
 
-let autoSkipObserver: MutationObserver | null = null;
-let autoSkipPollTimer: ReturnType<typeof setInterval> | null = null;
+type SkipState = 'idle' | 'watching_ad' | 'cooldown' | 'watching_consecutive';
 
-/** Interval between auto-skip poll attempts (ms) */
-const AUTO_SKIP_POLL_MS = 300;
+const SAFETY_POLL_MS = 500;
+const COOLDOWN_MS = 1500;
+const CONSECUTIVE_GRACE_MS = 2500;
+const MAX_AD_WAIT_MS = 30_000;
+
+let playerObserver: MutationObserver | null = null;
+let adModuleObserver: MutationObserver | null = null;
+let adModuleTarget: Element | null = null;
+let safetyPollTimer: ReturnType<typeof setInterval> | null = null;
+let attachRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let escalationTimer: ReturnType<typeof setTimeout> | null = null;
+let rafId: number | null = null;
+
+let skipState: SkipState = 'idle';
+let cooldownUntil = 0;
+let adGoneSince = 0;
+let adActiveSince = 0;
+let countedCurrentAd = false;
+let lastSkippedButton: HTMLElement | null = null;
+let sawGapAfterSkip = false;
+
+function resetAdTracking(): void {
+  countedCurrentAd = false;
+  lastSkippedButton = null;
+  sawGapAfterSkip = false;
+}
+
+function scheduleFrameCheck(player: Element, onSkip?: AutoSkipCallback): void {
+  if (rafId !== null) return;
+  const run = () => {
+    rafId = null;
+    attemptSkip(player, onSkip);
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    rafId = requestAnimationFrame(run);
+  } else {
+    rafId = setTimeout(run, 16) as unknown as number;
+  }
+}
+
+function detachAdWatchers(): void {
+  if (adModuleObserver) {
+    adModuleObserver.disconnect();
+    adModuleObserver = null;
+  }
+  adModuleTarget = null;
+  if (safetyPollTimer) {
+    clearInterval(safetyPollTimer);
+    safetyPollTimer = null;
+  }
+  if (escalationTimer) {
+    clearTimeout(escalationTimer);
+    escalationTimer = null;
+  }
+  if (rafId !== null) {
+    if (typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(rafId);
+    } else {
+      clearTimeout(rafId);
+    }
+    rafId = null;
+  }
+  skipState = 'idle';
+  cooldownUntil = 0;
+  adGoneSince = 0;
+  adActiveSince = 0;
+  resetAdTracking();
+}
+
+function ensureAdModuleObserver(player: Element, onSkip?: AutoSkipCallback): void {
+  const target = player.querySelector('.ytp-ad-module, .video-ads') ?? player;
+  if (adModuleObserver && adModuleTarget === target) return;
+
+  if (adModuleObserver) {
+    adModuleObserver.disconnect();
+  }
+  adModuleTarget = target;
+  adModuleObserver = new MutationObserver(() => {
+    scheduleFrameCheck(player, onSkip);
+  });
+  adModuleObserver.observe(target, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class', 'disabled', 'aria-disabled', 'hidden'],
+  });
+}
 
 /**
- * Start the auto-skip observer. It watches the player for the ad-showing
- * class and clicks the skip button when it appears.
- * Off by default — only called when the user enables auto-skip.
- *
- * @param onSkip — optional callback fired after a successful auto-skip
- *                 (used by content.ts to show toast + increment counter)
+ * Start the auto-skip observer. It watches the player for ad state
+ * and clicks the skip button as soon as it becomes visible/clickable.
  */
 export function startAutoSkip(onSkip?: AutoSkipCallback): void {
   stopAutoSkip();
 
-  // Find the player — retry up to 5 times over 2.5 seconds if not available yet
-  // (YouTube SPA navigation may not have rendered the player DOM yet)
+  // Retry up to 10 times over 5 seconds if player DOM hasn't rendered yet
   let retries = 0;
   const tryAttach = () => {
-    const player = document.querySelector(PLAYER_SELECTOR);
+    attachRetryTimer = null;
+    const player = getPlayerElement();
     if (player) {
       attachAutoSkip(player, onSkip);
-    } else if (retries < 5) {
+    } else if (retries < 10) {
       retries++;
-      setTimeout(tryAttach, 500);
+      attachRetryTimer = setTimeout(tryAttach, 500);
     }
   };
   tryAttach();
 }
 
-/** Stop the auto-skip observer and poll timer */
+/** Stop the auto-skip observer, inner watchers, and any pending timers */
 export function stopAutoSkip(): void {
-  if (autoSkipObserver) {
-    autoSkipObserver.disconnect();
-    autoSkipObserver = null;
+  if (attachRetryTimer) {
+    clearTimeout(attachRetryTimer);
+    attachRetryTimer = null;
   }
-  if (autoSkipPollTimer) {
-    clearInterval(autoSkipPollTimer);
-    autoSkipPollTimer = null;
+  if (playerObserver) {
+    playerObserver.disconnect();
+    playerObserver = null;
   }
+  detachAdWatchers();
 }
 
-/**
- * Attach the auto-skip MutationObserver to the player.
- *
- * Architecture:
- * - MutationObserver watches for class changes on the player element ONLY
- *   (efficient — doesn't fire on every subtree DOM change)
- * - When ad-showing class is detected, starts a 300ms poll loop that checks
- *   for the skip button (the button appears after a countdown delay)
- * - When the button is found, clicks it and stops polling
- * - When the ad ends (class removed), stops polling
- */
 function attachAutoSkip(player: Element, onSkip?: AutoSkipCallback): void {
-  autoSkipObserver = new MutationObserver((mutations) => {
+  playerObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        handleAdStateChange(player, onSkip);
+        evaluateAdState(player, onSkip);
         return;
       }
     }
   });
 
-  // Watch class changes on the player itself — NOT subtree
-  // This is much more efficient than watching the entire subtree
-  autoSkipObserver.observe(player, {
+  playerObserver.observe(player, {
     attributes: true,
     attributeFilter: ['class'],
   });
 
-  // Check immediately in case an ad is already showing
-  if (isAdShowing()) {
-    startSkipPolling(player, onSkip);
-  }
+  // Evaluate immediately in case an ad is already showing
+  evaluateAdState(player, onSkip);
 }
 
-/**
- * Handle a change in the player's ad state.
- * Starts or stops the skip button polling loop.
- */
-function handleAdStateChange(player: Element, onSkip?: AutoSkipCallback): void {
-  if (player.classList.contains(AD_SHOWING_CLASS)) {
-    // Ad started — begin polling for the skip button
-    startSkipPolling(player, onSkip);
-  } else {
-    // Ad ended — stop polling
-    if (autoSkipPollTimer) {
-      clearInterval(autoSkipPollTimer);
-      autoSkipPollTimer = null;
-    }
-  }
-}
+function evaluateAdState(player: Element, onSkip?: AutoSkipCallback): void {
+  const adActive = player.classList.contains(AD_SHOWING_CLASS) || isAdShowing();
+  const now = Date.now();
 
-/**
- * Poll for the skip button every 300ms until found or ad ends.
- * Uses the full clickSkipButton engine (which includes retry + seek fallback).
- *
- * CONSECUTIVE AD HANDLING:
- * After clicking the skip button for Ad 1, we don't stop polling immediately.
- * Instead, we enter a "cooldown" period (1 second) to avoid re-clicking the
- * same button, then continue polling to catch Ad 2. Polling only stops when
- * isAdShowing() is false AND we've waited through a grace period (to handle
- * the brief gap between consecutive ads where ad-showing flickers off).
- */
-function startSkipPolling(player: Element, onSkip?: AutoSkipCallback): void {
-  // Don't start duplicate polling
-  if (autoSkipPollTimer) return;
-
-  let attempts = 0;
-  let cooldownRemaining = 0;  // polls to skip after a successful click
-  let gracePeriod = 0;        // how many polls since ad-showing went false
-  const MAX_ATTEMPTS = 100;   // 30 seconds max (300ms × 100)
-  const COOLDOWN_POLLS = 4;   // ~1.2 seconds after clicking before retrying
-  const MAX_GRACE = 7;        // ~2.1 seconds to detect a consecutive ad
-
-  autoSkipPollTimer = setInterval(() => {
-    attempts++;
-
-    // Hard timeout — give up after 30 seconds
-    if (attempts > MAX_ATTEMPTS) {
-      clearInterval(autoSkipPollTimer!);
-      autoSkipPollTimer = null;
-      return;
-    }
-
-    const adActive = player.classList.contains(AD_SHOWING_CLASS) || isAdShowing();
-
-    if (!adActive) {
-      // Ad NOT showing — could be a brief gap between consecutive ads
-      gracePeriod++;
-      if (gracePeriod >= MAX_GRACE) {
-        // No follow-up ad appeared — truly done
-        clearInterval(autoSkipPollTimer!);
-        autoSkipPollTimer = null;
+  if (adActive) {
+    adGoneSince = 0;
+    if (skipState === 'idle') {
+      skipState = 'watching_ad';
+      adActiveSince = now;
+      ensureAdModuleObserver(player, onSkip);
+      if (!safetyPollTimer) {
+        safetyPollTimer = setInterval(() => attemptSkip(player, onSkip), SAFETY_POLL_MS);
       }
-      return;
+    } else if (skipState === 'watching_consecutive') {
+      skipState = 'watching_ad';
+      adActiveSince = now;
+      ensureAdModuleObserver(player, onSkip);
     }
-
-    // Ad IS showing — reset grace period
-    gracePeriod = 0;
-
-    // During cooldown, skip click attempts (button for Ad 1 may still be in DOM)
-    if (cooldownRemaining > 0) {
-      cooldownRemaining--;
-      return;
+    scheduleFrameCheck(player, onSkip);
+  } else {
+    resetAdTracking();
+    if (skipState === 'watching_ad' || skipState === 'cooldown') {
+      skipState = 'watching_consecutive';
+      adGoneSince = now;
+    } else if (
+      skipState === 'watching_consecutive' &&
+      now - adGoneSince >= CONSECUTIVE_GRACE_MS
+    ) {
+      detachAdWatchers();
     }
+  }
+}
 
-    // Try to find and click the skip button
-    const button = findSkipButton();
-    if (button) {
-      clickSkipButton(button);
-      onSkip?.();
-      // Enter cooldown — don't immediately re-click the same button
-      cooldownRemaining = COOLDOWN_POLLS;
-      // Reset attempts so we have a full timeout window for the next ad
-      attempts = 0;
+function checkForNewAdWhileShowing(): void {
+  if (!countedCurrentAd) return;
+
+  if (lastSkippedButton && (!lastSkippedButton.isConnected || !isVisible(lastSkippedButton))) {
+    sawGapAfterSkip = true;
+  }
+
+  // Only reset after cooldown has elapsed so Ad 1 teardown never triggers a double-count
+  if (sawGapAfterSkip && Date.now() >= cooldownUntil) {
+    resetAdTracking();
+  }
+}
+
+function attemptSkip(player: Element, onSkip?: AutoSkipCallback): void {
+  if (!player.isConnected) {
+    startAutoSkip(onSkip);
+    return;
+  }
+
+  const adActive = player.classList.contains(AD_SHOWING_CLASS) || isAdShowing();
+  const now = Date.now();
+
+  if (!adActive) {
+    resetAdTracking();
+    if (skipState === 'watching_ad' || skipState === 'cooldown') {
+      skipState = 'watching_consecutive';
+      adGoneSince = now;
+    } else if (
+      skipState === 'watching_consecutive' &&
+      now - adGoneSince >= CONSECUTIVE_GRACE_MS
+    ) {
+      detachAdWatchers();
     }
-  }, AUTO_SKIP_POLL_MS);
+    return;
+  }
+
+  adGoneSince = 0;
+  ensureAdModuleObserver(player, onSkip);
+
+  // Hard timeout after 30s of continuous ad playback (e.g. unskippable ad)
+  if (adActiveSince > 0 && now - adActiveSince > MAX_AD_WAIT_MS) {
+    detachAdWatchers();
+    return;
+  }
+
+  checkForNewAdWhileShowing();
+
+  const button = findSkipButton();
+  if (!button) {
+    if (countedCurrentAd) {
+      sawGapAfterSkip = true;
+    }
+    return;
+  }
+
+  // Only enforce cooldown on the SAME button element; a brand-new button
+  // (e.g. Ad 2 or a companion card's Skip button) is clicked & counted immediately.
+  if (skipState === 'cooldown' && now < cooldownUntil && button === lastSkippedButton) {
+    return;
+  }
+  skipState = 'watching_ad';
+
+  if (countedCurrentAd && button !== lastSkippedButton) {
+    resetAdTracking();
+  }
+
+  clickSkipButton(button);
+  if (!countedCurrentAd) {
+    countedCurrentAd = true;
+    lastSkippedButton = button;
+    sawGapAfterSkip = false;
+    onSkip?.();
+  }
+  skipState = 'cooldown';
+  cooldownUntil = now + COOLDOWN_MS;
+  adActiveSince = now;
+
+  // If YouTube ignores untrusted DOM clicks, escalate safely after 350ms
+  // only if this exact ad button is still showing.
+  if (escalationTimer) clearTimeout(escalationTimer);
+  escalationTimer = setTimeout(() => {
+    escalationTimer = null;
+    if (player.isConnected && player.classList.contains(AD_SHOWING_CLASS) && findSkipButton() === button) {
+      seekAdVideoIfStillShowing();
+    }
+  }, 350);
 }

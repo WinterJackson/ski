@@ -12,7 +12,13 @@
  * alongside auto-skip. No explicit mode switching needed.
  */
 
-import { findSkipButton, clickSkipButton, isAdShowing, loadLearnedSelectors } from '../src/content/detector';
+import {
+  findSkipButton,
+  clickSkipButton,
+  isAdShowing,
+  loadLearnedSelectors,
+  seekAdVideoIfStillShowing,
+} from '../src/content/detector';
 import { shouldTriggerSkip } from '../src/content/hotkey';
 import { onYouTubeNavigate, startAutoSkip, stopAutoSkip } from '../src/content/observer';
 import { showToast, hideToast } from '../src/content/toast';
@@ -20,6 +26,7 @@ import {
   loadSettings,
   saveSettings,
   recordSkip,
+  validateSettings,
   type SkiSettings,
   DEFAULT_SETTINGS,
 } from '../src/shared/settings';
@@ -34,6 +41,15 @@ export default defineContentScript({
   runAt: 'document_idle',
 
   async main() {
+    // Skip non-player iframes (comments, tracking, cards) while allowing embeds
+    const isTopFrame = window === window.top;
+    const isEmbedFrame = location.pathname.startsWith('/embed/');
+    const hasPlayer =
+      isTopFrame ||
+      isEmbedFrame ||
+      Boolean(document.querySelector('video, #movie_player, .html5-video-player, ytm-player'));
+    if (!hasPlayer) return;
+
     console.debug('[Ski] Content script loaded on:', location.href);
 
     // ── Inject main-world helper script ──
@@ -41,7 +57,7 @@ export default defineContentScript({
     // The content script communicates with it via CustomEvent.
     try {
       const script = document.createElement('script');
-      script.src = browser.runtime.getURL('/ski-main.js' as '/options.html');
+      script.src = (browser.runtime.getURL as (path: string) => string)('/ski-main.js');
       (document.head ?? document.documentElement).appendChild(script);
       script.remove();
     } catch {
@@ -82,39 +98,6 @@ export default defineContentScript({
       if (titleEl?.textContent) return titleEl.textContent.trim();
 
       return 'Unknown video';
-    }
-
-    // ── Consecutive-ad watcher ──
-    // After every successful skip, monitors for a follow-up ad (Ad 2 of 2)
-    // and auto-clicks it. This ensures a single keypress handles double ads.
-    let consecutiveAdTimer: ReturnType<typeof setInterval> | null = null;
-
-    function watchForConsecutiveAd(method: 'manual' | 'auto'): void {
-      if (!settings.enabled) return;
-      if (consecutiveAdTimer) clearInterval(consecutiveAdTimer);
-      let attempts = 0;
-      consecutiveAdTimer = setInterval(() => {
-        attempts++;
-        // Stop after 10 seconds or when the ad phase is truly over
-        if (attempts > 20) {
-          clearInterval(consecutiveAdTimer!);
-          consecutiveAdTimer = null;
-          return;
-        }
-        // During the brief gap between ads, isAdShowing() may be false — keep watching
-        if (!isAdShowing()) return;
-        // Ad is showing again — look for the skip button
-        const button = findSkipButton();
-        if (button) {
-          clearInterval(consecutiveAdTimer!);
-          consecutiveAdTimer = null;
-          // Small delay to let YouTube fully initialize the new skip button
-          setTimeout(() => {
-            clickSkipButton(button);
-            onSkipSuccess(method);
-          }, 150);
-        }
-      }, 500);
     }
 
     // ── Single Toast Lifecycle Controller ──
@@ -179,21 +162,25 @@ export default defineContentScript({
     }
 
     // ── Shared skip feedback handler ──
+    let lastRecordedSkipAt = 0;
+    const MIN_SKIP_DEDUP_MS = 150;
+    let manualEscalationTimer: ReturnType<typeof setTimeout> | null = null;
+
     function onSkipSuccess(method: 'manual' | 'auto'): void {
+      if (!settings.enabled) return;
+      const now = Date.now();
+      if (now - lastRecordedSkipAt < MIN_SKIP_DEDUP_MS) {
+        return;
+      }
+      lastRecordedSkipAt = now;
+
       handleToast(method);
       recordSkip(method, getVideoTitle());
       console.debug(`[Ski] Ad skipped (${method})`);
-      // Watch for a consecutive ad (Ad 2 of 2) after this skip.
-      // ONLY for manual skips — the auto-skip observer's polling loop
-      // already handles consecutive ads via its built-in cooldown + grace
-      // period mechanism. Running both would double-count Ad 2.
-      if (method === 'manual') {
-        watchForConsecutiveAd(method);
-      }
     }
 
     // --- Keydown handler (capture phase) ---
-    // Always active — works on desktop AND when a keyboard is attached to a mobile device
+    // Strict human mouse parity: 1 keypress = 1 click on the currently ready Skip button.
     function onKeyDown(event: KeyboardEvent): void {
       if (!settings.enabled) return;
       if (!shouldTriggerSkip(event, settings)) return;
@@ -206,18 +193,30 @@ export default defineContentScript({
       event.stopPropagation();
       clickSkipButton(button);
       onSkipSuccess('manual');
+      if (manualEscalationTimer) clearTimeout(manualEscalationTimer);
+      manualEscalationTimer = setTimeout(() => {
+        manualEscalationTimer = null;
+        if (settings.enabled && findSkipButton() === button) {
+          seekAdVideoIfStillShowing();
+        }
+      }, 350);
     }
 
     document.addEventListener('keydown', onKeyDown, { capture: true });
 
     // --- Auto-skip ---
-    if (settings.enabled && settings.autoSkip) {
+    let autoSkipActive = Boolean(settings.enabled && settings.autoSkip);
+    if (autoSkipActive) {
       startAutoSkip(() => onSkipSuccess('auto'));
     }
 
     // --- SPA navigation: re-initialize when YouTube navigates ---
     onYouTubeNavigate(() => {
-      // Clean up any ongoing toast cycle
+      // Clean up any ongoing toast or escalation timer
+      if (manualEscalationTimer) {
+        clearTimeout(manualEscalationTimer);
+        manualEscalationTimer = null;
+      }
       if (toastWatchTimer) {
         clearInterval(toastWatchTimer);
         toastWatchTimer = null;
@@ -226,9 +225,9 @@ export default defineContentScript({
       try { hideToast(); } catch { /* non-critical */ }
 
       // Auto-skip needs to re-attach to the new player
-      if (settings.enabled && settings.autoSkip) {
+      autoSkipActive = Boolean(settings.enabled && settings.autoSkip);
+      if (autoSkipActive) {
         stopAutoSkip();
-        // The new startAutoSkip retries internally if player isn't ready yet
         startAutoSkip(() => onSkipSuccess('auto'));
       } else {
         stopAutoSkip();
@@ -246,12 +245,27 @@ export default defineContentScript({
         }
       }
 
-      // Merge changes into current settings
-      settings = { ...settings, ...updated };
+      // Merge & validate so cleared keys fall back to DEFAULT_SETTINGS
+      settings = validateSettings({ ...settings, ...updated });
 
-      // Handle enabled and auto-skip toggle
-      if ('enabled' in updated || 'autoSkip' in updated) {
-        if (settings.enabled && settings.autoSkip) {
+      if (!settings.enabled) {
+        if (manualEscalationTimer) {
+          clearTimeout(manualEscalationTimer);
+          manualEscalationTimer = null;
+        }
+        if (toastWatchTimer) {
+          clearInterval(toastWatchTimer);
+          toastWatchTimer = null;
+        }
+        toastActive = false;
+        try { hideToast(); } catch { /* non-critical */ }
+      }
+
+      // Only toggle auto-skip when the effective active state actually changes
+      const shouldRunAutoSkip = Boolean(settings.enabled && settings.autoSkip);
+      if (shouldRunAutoSkip !== autoSkipActive) {
+        autoSkipActive = shouldRunAutoSkip;
+        if (autoSkipActive) {
           startAutoSkip(() => onSkipSuccess('auto'));
         } else {
           stopAutoSkip();

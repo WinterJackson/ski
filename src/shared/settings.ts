@@ -227,7 +227,7 @@ async function recordSkipInner(
 
     // Daily breakdown
     const today = new Date().toISOString().slice(0, 10);
-    const dailySkips = (result.dailySkips as Record<string, number>) ?? {};
+    const dailySkips = { ...((result.dailySkips as Record<string, number>) ?? {}) };
     dailySkips[today] = (dailySkips[today] ?? 0) + 1;
 
     // Prune old daily entries (keep last N days)
@@ -247,7 +247,7 @@ async function recordSkipInner(
 
     // Recent activity log (opt-in)
     if (videoTitle) {
-      const recentSkips = (result.recentSkips as RecentSkip[]) ?? [];
+      const recentSkips = [...((result.recentSkips as RecentSkip[]) ?? [])];
       recentSkips.unshift({
         title: videoTitle,
         timestamp: Date.now(),
@@ -260,8 +260,8 @@ async function recordSkipInner(
     }
 
     await browser.storage.local.set(updates);
-  } catch {
-    // Non-critical — extension still works without stats
+  } catch (err) {
+    console.warn('[Ski] Failed to record skip stats:', err);
   }
 }
 

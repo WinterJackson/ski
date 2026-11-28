@@ -33,7 +33,7 @@ let learnedSelectors: string[] = [];
 const LEARNED_SELECTORS_KEY = 'ski_learned_selectors';
 const LEARNED_SELECTORS_MAX = 10;
 
-/** Load learned selectors from storage on init */
+/** Load learned selectors from storage on init and keep synced across frames */
 export async function loadLearnedSelectors(): Promise<void> {
   try {
     const result = await browser.storage.local.get({ [LEARNED_SELECTORS_KEY]: [] });
@@ -44,6 +44,19 @@ export async function loadLearnedSelectors(): Promise<void> {
   } catch {
     learnedSelectors = [];
   }
+}
+
+/** Sync learned selectors if another frame updates local storage */
+try {
+  browser.storage?.onChanged?.addListener((changes, areaName) => {
+    if (areaName !== 'local' || !(LEARNED_SELECTORS_KEY in changes)) return;
+    const next = changes[LEARNED_SELECTORS_KEY]?.newValue;
+    if (Array.isArray(next)) {
+      learnedSelectors = next.filter((s): s is string => typeof s === 'string');
+    }
+  });
+} catch {
+  // Non-critical in unit tests without full extension runtime
 }
 
 /** Persist a newly discovered selector */
@@ -67,6 +80,21 @@ async function saveLearnedSelector(selector: string): Promise<void> {
 // ── Core detection ──────────────────────────────────────────────────────
 
 /**
+ * Resolve the active YouTube player element in priority order.
+ * Using a single comma-joined querySelector can return an earlier feed/preview
+ * `.html5-video-player` instead of `#movie_player`.
+ */
+export function getPlayerElement(): Element | null {
+  return (
+    document.querySelector('#movie_player.ad-showing, .html5-video-player.ad-showing') ??
+    document.getElementById('movie_player') ??
+    document.querySelector('ytm-player') ??
+    document.querySelector('.html5-video-player') ??
+    document.querySelector('.player-container')
+  );
+}
+
+/**
  * Check if the player is currently showing an ad.
  *
  * Uses multiple detection strategies to survive YouTube renaming
@@ -77,7 +105,7 @@ async function saveLearnedSelector(selector: string): Promise<void> {
  * 4. Check for ad-related classes on the player (pattern match)
  */
 export function isAdShowing(): boolean {
-  const player = document.querySelector(PLAYER_SELECTOR);
+  const player = getPlayerElement();
 
   // Strategy 1: Known ad-showing class on the player
   if (player && player.classList.contains(AD_SHOWING_CLASS)) return true;
@@ -88,17 +116,15 @@ export function isAdShowing(): boolean {
   );
   if (adPlayer) return true;
 
-  // Strategy 3: Visible ad overlay containers inside the player
-  // If YouTube renames ad-showing but keeps the ad module structure,
-  // we detect ads by their overlay elements
+  // Strategy 3: Active video-ad overlay containers inside the player.
+  // Exclude .ytp-ad-overlay-container (companion/banner cards that persist over main video).
   if (player) {
     for (const sel of AD_CONTAINER_SELECTORS) {
+      if (sel === '.ytp-ad-overlay-container') continue;
       try {
-        const overlay = player.querySelector(sel);
-        if (overlay) {
-          // Check if the overlay has visible content (not just an empty container)
-          const hasContent = overlay.children.length > 0;
-          if (hasContent) return true;
+        const overlay = player.querySelector<HTMLElement>(sel);
+        if (overlay && overlay.children.length > 0 && isVisible(overlay)) {
+          return true;
         }
       } catch { /* invalid selector */ }
     }
@@ -132,45 +158,47 @@ export function findSkipButton(): HTMLElement | null {
     return null;
   }
 
-  // Layer 1: Learned selectors (from previous discovery)
-  for (const selector of learnedSelectors) {
-    try {
-      const button = document.querySelector<HTMLElement>(selector);
-      if (button && isVisible(button) && isClickable(button)) {
-        // Validate: the learned element should still look like a skip button
-        // (guards against stale selectors matching wrong elements)
-        if (matchesSkipText(button) || hasSkipLikeClass(button)) {
-          return button;
+  const player = getPlayerElement();
+  const queryRoots: ParentNode[] = player ? [player, document] : [document];
+
+  // Layer 1: Learned selectors (prefer player scope, fall back to document)
+  for (const root of queryRoots) {
+    for (const selector of learnedSelectors) {
+      try {
+        const button = root.querySelector<HTMLElement>(selector);
+        if (button && isVisible(button) && isClickable(button) && !isCountdownOrEmpty(button)) {
+          if (matchesSkipText(button) || hasSkipLikeClass(button)) {
+            return button;
+          }
         }
-        // Element exists but doesn't look like a skip button anymore — skip it
-        // but don't remove from learned (might work in another language/layout)
+      } catch {
+        // Invalid selector — skip
       }
-    } catch {
-      // Invalid selector — skip
     }
   }
 
-  // Layer 2: Known CSS selectors
-  for (const selector of SKIP_BUTTON_SELECTORS) {
-    try {
-      const els = document.querySelectorAll<HTMLElement>(selector);
-      for (const button of els) {
-        if (isVisible(button) && isClickable(button)) {
-          return button;
+  // Layer 2: Known CSS selectors (prefer player scope, fall back to document)
+  for (const root of queryRoots) {
+    for (const selector of SKIP_BUTTON_SELECTORS) {
+      try {
+        const els = root.querySelectorAll<HTMLElement>(selector);
+        for (const button of els) {
+          if (isVisible(button) && isClickable(button) && !isCountdownOrEmpty(button)) {
+            return button;
+          }
         }
-      }
-    } catch { /* invalid selector */ }
+      } catch { /* invalid selector */ }
+    }
   }
 
   // Layer 3: Structural fallback — interactive elements with skip text
   // Searches buttons AND role="button" elements (YouTube may change element types)
-  const player = document.querySelector(PLAYER_SELECTOR);
   if (player) {
     const candidates = player.querySelectorAll<HTMLElement>(
       'button, [role="button"], a[class*="skip" i], a[class*="ad" i]'
     );
     for (const el of candidates) {
-      if (isVisible(el) && isClickable(el) && matchesSkipText(el)) {
+      if (isVisible(el) && isClickable(el) && !isCountdownOrEmpty(el) && matchesSkipText(el)) {
         // This element matched by text — learn its selector for next time
         learnSelector(el);
         return el;
@@ -196,43 +224,60 @@ export function findSkipButton(): HTMLElement | null {
  * countdown), so we must verify actual visibility.
  */
 export function isVisible(el: HTMLElement): boolean {
-  // Check inline style first (fastest check for display:none)
-  const inlineDisplay = el.style.display;
-  if (inlineDisplay === 'none') return false;
-  const inlineVisibility = el.style.visibility;
-  if (inlineVisibility === 'hidden') return false;
-
-  // Check computed styles (catches CSS class-based hiding)
-  try {
-    const style = getComputedStyle(el);
-    if (style.display === 'none') return false;
-    if (style.visibility === 'hidden') return false;
-    if (style.opacity === '0') return false;
-    // Check for clip/clip-path hiding (used by some YouTube layouts)
-    if (style.clipPath === 'inset(100%)') return false;
-  } catch {
-    // getComputedStyle can throw in edge cases — treat as visible
+  // Fast native check (Firefox 106+, Chrome 105+) — catches ancestor display/visibility/content-visibility.
+  // Intentionally omits checkOpacity so fade-in transitions or .ytp-autohide wrappers don't block clickable buttons.
+  const checkVis = (el as HTMLElement & {
+    checkVisibility?: (opts?: { checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean;
+  }).checkVisibility;
+  if (typeof checkVis === 'function') {
+    try {
+      if (!checkVis.call(el, { checkVisibilityCSS: true })) {
+        return false;
+      }
+    } catch {
+      // Fall through to manual checks
+    }
   }
 
-  // Check bounding box — zero-size elements are effectively invisible
+  // Check element and ancestors for inline/computed display/visibility/clip-path/pointer-events hiding
+  let current: HTMLElement | null = el;
+  for (let depth = 0; depth < 10 && current; depth++) {
+    if (current.hasAttribute('hidden')) return false;
+    if (current.style.display === 'none') return false;
+    if (current.style.visibility === 'hidden') return false;
+    if (current === el && current.style.opacity === '0') return false;
+
+    try {
+      const style = getComputedStyle(current);
+      if (style.display === 'none') return false;
+      if (style.visibility === 'hidden') return false;
+      if (style.pointerEvents === 'none') return false;
+      if (current === el && style.opacity === '0') return false;
+      if (style.clipPath === 'inset(100%)') return false;
+    } catch {
+      // getComputedStyle can throw in edge cases
+    }
+
+    if (current === document.body) break;
+    current = current.parentElement;
+  }
+
+  // Check bounding box — zero-size elements are invisible in real browsers
   const rect = el.getBoundingClientRect();
   if (rect.width > 0 && rect.height > 0) {
     return true;
   }
 
-  // If inline display is explicitly set to something visible, trust it
-  if (inlineDisplay && inlineDisplay !== 'none') return true;
+  // In a real browser (where checkVisibility exists or documentElement has layout),
+  // a 0x0 bounding box is definitively invisible (e.g. collapsed countdown button).
+  const hasLayoutEngine =
+    typeof checkVis === 'function' ||
+    (document.documentElement?.getBoundingClientRect().width ?? 0) > 0;
+  if (hasLayoutEngine) {
+    return false;
+  }
 
-  // offsetParent check (null for hidden elements, but also for position:fixed)
-  if (el.offsetParent !== null) return true;
-
-  // Check if the element is position:fixed (offsetParent is null but still visible)
-  try {
-    const pos = getComputedStyle(el).position;
-    if (pos === 'fixed' || pos === 'absolute') return true;
-  } catch { /* treat as visible */ }
-
-  // Default: element passed style checks, assume visible
+  // Layoutless test environment (jsdom): all ancestor & self style checks passed
   return true;
 }
 
@@ -242,6 +287,16 @@ export function isClickable(el: HTMLElement): boolean {
   if (el.getAttribute('aria-disabled') === 'true') return false;
   if (el.hasAttribute('disabled')) return false;
   return true;
+}
+
+/** Reject empty oval placeholders or countdown-only labels ("5", "Skip in 5s") */
+function isCountdownOrEmpty(el: HTMLElement): boolean {
+  const text = (el.textContent ?? '').trim();
+  const aria = (el.getAttribute('aria-label') ?? '').trim();
+  if (!text && !aria) return true;
+  if (/^\d+\s*s?$/i.test(text)) return true;
+  if (/\bskip\s+in\s+\d/i.test(text) || /\bskip\s+in\s+\d/i.test(aria)) return true;
+  return false;
 }
 
 /**
@@ -451,7 +506,7 @@ const DISCOVERY_THRESHOLD = 0.55;
  * Searches: <button>, [role="button"], <a>, and elements with tabindex.
  */
 export function discoverSkipButton(): HTMLElement | null {
-  const player = document.querySelector(PLAYER_SELECTOR);
+  const player = getPlayerElement();
   if (!player) return null;
 
   // Search buttons AND other interactive elements
@@ -461,11 +516,29 @@ export function discoverSkipButton(): HTMLElement | null {
   let bestButton: HTMLElement | null = null;
   let bestScore = 0;
 
+  // Split cheap DOM/text signals from layout-forcing getBoundingClientRect() signals
+  const cheapSignals = HEURISTIC_SIGNALS.filter(
+    s => s.name !== 'position' && s.name !== 'element-size'
+  );
+  const layoutSignals = HEURISTIC_SIGNALS.filter(
+    s => s.name === 'position' || s.name === 'element-size'
+  );
+  const maxLayoutContribution = layoutSignals.reduce((sum, s) => sum + s.weight, 0);
+
   for (const el of candidates) {
-    if (!isVisible(el) || !isClickable(el)) continue;
+    if (!isVisible(el) || !isClickable(el) || isCountdownOrEmpty(el)) continue;
 
     let score = 0;
-    for (const signal of HEURISTIC_SIGNALS) {
+    for (const signal of cheapSignals) {
+      score += signal.weight * signal.score(el, player);
+    }
+
+    // Short-circuit before forcing synchronous layout if candidate cannot reach threshold
+    if (score + maxLayoutContribution < DISCOVERY_THRESHOLD) {
+      continue;
+    }
+
+    for (const signal of layoutSignals) {
       score += signal.weight * signal.score(el, player);
     }
 
@@ -483,7 +556,7 @@ export function discoverSkipButton(): HTMLElement | null {
     return bestButton;
   }
 
-  if (isAdShowing() && candidates.length > 0) {
+  if (candidates.length > 0) {
     console.debug(
       `[Ski] No skip button found during ad. ` +
       `Best candidate scored ${bestScore.toFixed(2)} (threshold: ${DISCOVERY_THRESHOLD}). ` +
@@ -504,6 +577,14 @@ export function discoverSkipButton(): HTMLElement | null {
  * the learned selector survives YouTube adding or removing other classes
  * on the same element.
  */
+const GENERIC_CHROME_CLASSES = new Set([
+  'ytp-button',
+  'ytp-icon',
+  'ytp-menuitem',
+  'ytp-control',
+  'yt-spec-button-shape-next',
+]);
+
 function learnSelector(button: HTMLElement): void {
   const selectors: string[] = [];
   const tag = button.tagName.toLowerCase();
@@ -513,36 +594,37 @@ function learnSelector(button: HTMLElement): void {
     selectors.push(`#${CSS.escape(button.id)}`);
   }
 
-  // Learn INDIVIDUAL distinctive classes (not the full combined selector)
-  // This way, if YouTube adds or removes one class, the others still match
+  // Learn INDIVIDUAL skip-specific classes (never generic chrome like ytp-button)
   if (button.classList.length > 0) {
     for (const cls of button.classList) {
       const lower = cls.toLowerCase();
-      // Only learn classes that look distinctive (contain skip/ad/button)
-      if (lower.includes('skip') || lower.includes('ad') || lower.includes('button')) {
+      if (GENERIC_CHROME_CLASSES.has(lower)) continue;
+      if (lower.includes('skip') || lower.includes('ad-skip')) {
         selectors.push(`${tag}.${CSS.escape(cls)}`);
       }
     }
-    // If no distinctive classes, learn the full class set as a fallback
-    if (selectors.length === 0 && button.classList.length > 0) {
-      const classSelector = `${tag}.${Array.from(button.classList)
-        .map(c => CSS.escape(c))
-        .join('.')}`;
-      selectors.push(classSelector);
+    // If no skip-specific classes, learn the full class set only if it has non-generic classes
+    if (selectors.length === 0) {
+      const nonGeneric = Array.from(button.classList).filter(
+        c => !GENERIC_CHROME_CLASSES.has(c.toLowerCase())
+      );
+      if (nonGeneric.length > 0) {
+        selectors.push(`${tag}.${nonGeneric.map(c => CSS.escape(c)).join('.')}`);
+      }
     }
   }
 
-  // If it has an aria-label, learn an attribute selector
+  // If it has a skip-like aria-label, learn an attribute selector
   const ariaLabel = button.getAttribute('aria-label');
-  if (ariaLabel) {
+  if (ariaLabel && matchesSkipText(button)) {
     selectors.push(`${tag}[aria-label="${CSS.escape(ariaLabel)}"]`);
   }
 
-  // Learn parent context selectors (for disambiguation)
+  // Learn parent context selectors (skip-specific containers only)
   if (button.parentElement && button.parentElement.classList.length > 0) {
     for (const cls of button.parentElement.classList) {
       const lower = cls.toLowerCase();
-      if (lower.includes('skip') || lower.includes('ad')) {
+      if (lower.includes('skip') || lower.includes('ad-skip') || lower.includes('ad-button')) {
         selectors.push(`.${CSS.escape(cls)} ${tag}`);
       }
     }
@@ -557,95 +639,88 @@ function learnSelector(button: HTMLElement): void {
 
 // ── Click method ────────────────────────────────────────────────────────
 
-/** Timer for the skip retry loop */
-let skipRetryTimer: ReturnType<typeof setInterval> | null = null;
-
 /**
- * Click the skip button using multiple layered strategies with retry.
- *
- * YouTube's Polymer framework may use tap gesture handlers, event
- * delegation, or internal API calls that ignore a plain .click().
- * We escalate aggressively through every viable approach and retry
- * until the ad is actually gone.
+ * Dispatch a realistic pointer + mouse + click sequence on the target element.
+ * YouTube's Polymer/mobile gesture handlers may listen for pointerdown/mouseup
+ * rather than synthetic .click() alone.
  */
-export function clickSkipButton(button: HTMLElement): void {
-  // ── Immediate: Focus + click the detected button ──
-  try { button.focus({ preventScroll: true }); } catch { /* non-critical */ }
-  button.click();
+function dispatchRealisticClick(el: HTMLElement): void {
+  try {
+    const rect = el.getBoundingClientRect();
+    const clientX = rect.left + rect.width / 2;
+    const clientY = rect.top + rect.height / 2;
+    const commonInit: MouseEventInit = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX,
+      clientY,
+      button: 0,
+    };
 
-  // ── Immediate: Walk up and click skip-related ancestors ──
-  let ancestor = button.parentElement;
-  for (let depth = 0; depth < 5 && ancestor; depth++) {
-    const cls = (ancestor.className ?? '').toString().toLowerCase();
-    if (cls.includes('skip') || cls.includes('ad-skip') ||
-        cls.includes('ad-button-container') || cls.includes('ad-button-slot')) {
-      ancestor.click();
+    if (typeof PointerEvent === 'function') {
+      el.dispatchEvent(new PointerEvent('pointerdown', { ...commonInit, pointerId: 1, isPrimary: true }));
     }
-    ancestor = ancestor.parentElement;
+    el.dispatchEvent(new MouseEvent('mousedown', commonInit));
+    if (typeof PointerEvent === 'function') {
+      el.dispatchEvent(new PointerEvent('pointerup', { ...commonInit, pointerId: 1, isPrimary: true }));
+    }
+    el.dispatchEvent(new MouseEvent('mouseup', commonInit));
+  } catch {
+    // Fallback cleanly to .click()
   }
 
-  // ── Immediate: Shotgun — click ALL skip-looking elements ──
-  clickAllSkipElements(button);
-
-  // ── Immediate: Dispatch to main-world helper ──
-  try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
-
-  // ── Retry loop: escalate until ad is gone ──
-  // Handles consecutive ads (Ad 1 of 2 → Ad 2 of 2) with a grace period.
-  // When isAdShowing() briefly goes false between ads, we don't immediately
-  // stop — we wait up to 2 seconds for a follow-up ad to appear.
-  if (skipRetryTimer) clearInterval(skipRetryTimer);
-  let attempt = 0;
-  let gracePeriod = 0;        // counts how many polls since ad-showing went false
-  const MAX_GRACE = 10;       // 10 × 200ms = 2 seconds to detect a consecutive ad
-  const MAX_ATTEMPTS = 25;    // 25 × 200ms = 5 seconds total
-  skipRetryTimer = setInterval(() => {
-    attempt++;
-
-    const adActive = isAdShowing();
-
-    if (adActive) {
-      // Ad is showing — reset grace period (might be Ad 2 starting)
-      gracePeriod = 0;
-
-      // Re-try clicking (button might have reappeared or become interactive)
-      const btn = findSkipButton();
-      if (btn) {
-        btn.click();
-        clickAllSkipElements(btn);
-      }
-
-      // After 200ms (attempt 1), escalate to video seek
-      if (attempt >= 1) {
-        seekPastAd();
-      }
-
-      // Re-dispatch to main-world every 400ms
-      if (attempt % 2 === 0) {
-        try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
-      }
-    } else {
-      // Ad NOT showing — but might be a brief gap between consecutive ads
-      gracePeriod++;
-      if (gracePeriod >= MAX_GRACE) {
-        // No follow-up ad appeared within 2 seconds — truly done
-        if (skipRetryTimer) { clearInterval(skipRetryTimer); skipRetryTimer = null; }
-        return;
-      }
-    }
-
-    // Hard limit: don't loop forever
-    if (attempt > MAX_ATTEMPTS) {
-      if (skipRetryTimer) { clearInterval(skipRetryTimer); skipRetryTimer = null; }
-    }
-  }, 200);
+  el.click();
 }
 
 /**
- * Click ALL visible skip buttons and text-matched elements on the page.
- * Uses both CSS selectors AND multilingual text matching.
+ * Click the skip button using native event dispatch, scoped fallback
+ * element clicks, and main-world helper notification.
+ *
+ * Retry & consecutive-ad coordination is handled by the unified
+ * state machine in observer.ts / content.ts (no competing interval timers).
+ */
+export function clickSkipButton(button: HTMLElement): void {
+  // ── 1. Focus + realistic pointer/mouse/click sequence on the button ──
+  try { button.focus({ preventScroll: true }); } catch { /* non-critical */ }
+  dispatchRealisticClick(button);
+
+  // ── 2. Deduplicated fallback for split/layered skip elements ──
+  clickAllSkipElements(button);
+
+  // ── 3. Dispatch to main-world helper (handles moviePlayer.skipAd()) ──
+  try { document.dispatchEvent(new CustomEvent('__ski_skip')); } catch { /* noop */ }
+}
+
+/**
+ * Safely seek the active ad video to its end ONLY when the player still
+ * confirms `ad-showing`. Scoped strictly to `player.querySelector('video')`
+ * so main content videos are never touched.
+ */
+export function seekAdVideoIfStillShowing(): boolean {
+  const player = getPlayerElement();
+  if (!player || !isAdShowing()) {
+    return false;
+  }
+  const video = player.querySelector<HTMLVideoElement>('video');
+  if (video && video.duration && isFinite(video.duration) && video.currentTime < video.duration - 0.5) {
+    video.currentTime = video.duration;
+    console.debug('[Ski] Escalation: seeked active ad video to end');
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Click any additional visible skip buttons inside the player (deduplicated).
  */
 function clickAllSkipElements(exclude: HTMLElement | null): void {
+  const clicked = new Set<HTMLElement>();
+  if (exclude) clicked.add(exclude);
+
+  const player = getPlayerElement();
+  const queryRoot: ParentNode = player ?? document;
+
   const allSelectors = [
     ...SKIP_BUTTON_SELECTORS,
     '.ytp-ad-skip-button-container',
@@ -654,39 +729,25 @@ function clickAllSkipElements(exclude: HTMLElement | null): void {
     '.ytp-ad-skip-button-slot button',
     '[class*="skip-ad"][class*="button"]',
   ];
+
   for (const sel of allSelectors) {
     try {
-      document.querySelectorAll<HTMLElement>(sel).forEach(el => {
-        if (el !== exclude && isVisible(el)) el.click();
+      queryRoot.querySelectorAll<HTMLElement>(sel).forEach(el => {
+        if (!clicked.has(el) && isVisible(el) && isClickable(el)) {
+          clicked.add(el);
+          el.click();
+        }
       });
     } catch { /* noop */ }
   }
 
   // Text-matched elements inside the player (multilingual)
-  const player = document.querySelector(PLAYER_SELECTOR);
   if (player) {
     player.querySelectorAll<HTMLElement>('button, [role="button"]').forEach(el => {
-      if (el !== exclude && isVisible(el) && matchesSkipText(el)) {
+      if (!clicked.has(el) && isVisible(el) && isClickable(el) && matchesSkipText(el)) {
+        clicked.add(el);
         el.click();
       }
     });
-  }
-}
-
-/**
- * Seek all playing videos past their end to force-complete the ad.
- * YouTube's ad framework detects the video ending and transitions
- * to the main content. The native HTMLVideoElement.currentTime setter
- * cannot be blocked by page JavaScript — it's a browser-native
- * property on the C++ HTMLMediaElement, not a JS setter that YouTube
- * can override.
- */
-function seekPastAd(): void {
-  const videos = document.querySelectorAll<HTMLVideoElement>('video');
-  for (const video of videos) {
-    if (video.duration && isFinite(video.duration) && video.currentTime < video.duration - 0.5) {
-      video.currentTime = video.duration;
-      console.debug('[Ski] Fallback: seeked ad video to end');
-    }
   }
 }
