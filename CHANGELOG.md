@@ -5,6 +5,23 @@ All notable changes to Ski Extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] - 2026-11-28
+
+### Added
+- Scoped two-tier `MutationObserver` + `requestAnimationFrame` auto-skip engine for sub-16ms reaction time
+- Realistic pointer/mouse event dispatch (`pointerdown` → `mousedown` → `pointerup` → `mouseup` → `click`)
+- Full-title & exact-timestamp tooltips, 2-line title clamping, and scrollable 50-entry Activity Log in Options
+
+### Changed
+- Enforced strict human-mouse parity in Manual Mode (`1 keypress = 1 click` without background auto-clicking)
+- Prioritized `#movie_player` over feed preview players via `getPlayerElement()` and scoped `seekAdVideoIfStillShowing()` fallback
+- Hardened the master **Enable Ski** toggle across popup, options, background badge, and content script
+
+### Fixed
+- Fixed premature visibility matches on empty ovals, countdown numbers, and `pointer-events: none` / `hidden` placeholders
+- Fixed double-counting and off-by-one stats on consecutive ads and post-ad companion cards
+- Removed duplicate DOM `.click()` loops from `ski-main.js` that could clear button text during Ad 1 → Ad 2 transitions
+
 ## [1.0.0] - 2026-11-24
 
 ### Added
